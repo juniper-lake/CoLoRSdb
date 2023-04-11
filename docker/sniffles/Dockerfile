@@ -14,7 +14,7 @@ RUN apt-get -qq update \
 	&& rm -rf /var/lib/apt/lists/*
 
 ARG SNIFFLES_VERSION
-RUN python3 -m pip install paraphase==${SNIFFLES_VERSION}
+RUN python3 -m pip install sniffles==${SNIFFLES_VERSION}
 
 ARG PYSAM_VERSION
 RUN python3 -m pip install setuptools==58
