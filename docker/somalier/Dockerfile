@@ -1,0 +1,31 @@
+FROM ubuntu:focal
+
+LABEL org.opencontainers.image.authors="Juniper Lake <jlake@pacificbiosciences.com>"
+LABEL org.opencontainers.image.url="https://github.com/juniper-lake/CoLoRS"
+
+ARG IMAGE_NAME
+ENV IMAGE_NAME "${IMAGE_NAME}"
+ARG IMAGE_TAG
+ENV IMAGE_TAG "${IMAGE_TAG}"
+
+RUN apt-get -qq update \
+	&& apt-get -qq install \
+		wget \
+		build-essential \
+		zlib1g-dev \
+		liblzma-dev \
+		libbz2-dev \
+		libcurl4-openssl-dev \
+	&& rm -rf /var/lib/apt/lists/*
+
+ARG SOMALIER_VERSION
+RUN wget https://github.com/brentp/somalier/releases/download/v${SOMALIER_VERSION}/somalier --output-document /opt/somalier \
+  && chmod +x /opt/somalier
+
+ARG HTSLIB_VERSION
+RUN wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 \
+	&& tar -jxvf htslib-${HTSLIB_VERSION}.tar.bz2 --directory /opt \
+	&& rm htslib-${HTSLIB_VERSION}.tar.bz2
+RUN cd /opt/htslib-${HTSLIB_VERSION} \
+	&& make \
+	&& make install
