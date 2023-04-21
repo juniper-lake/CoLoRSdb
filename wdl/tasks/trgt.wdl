@@ -4,6 +4,8 @@ import "../structs.wdl"
 
 task trgt {
 	input {
+		String sex
+
     File bam
 		File bam_index
 
@@ -14,6 +16,7 @@ task trgt {
 		RuntimeAttributes runtime_attributes
 	}
 	
+	String karyotype = if sex == "MALE" then "XY" else "XX"
 	String bam_basename = basename(bam, ".bam")
 	Int threads = 4
 	Int disk_size = ceil((size(bam, "GB") + size(reference_fasta, "GB")) * 2 + 20)
@@ -22,6 +25,7 @@ task trgt {
 		set -euo pipefail
 
 		trgt \
+			--karyotype ~{karyotype} \
 			--genome ~{reference_fasta} \
 			--repeats ~{tandem_repeat_bed} \
 			--reads ~{bam} \
