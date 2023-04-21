@@ -16,11 +16,12 @@ RUN apt-get -qq update \
 		liblzma-dev \
 		libbz2-dev \
 		libcurl4-openssl-dev \
+		parallel \
 	&& rm -rf /var/lib/apt/lists/*
 
 ARG SOMALIER_VERSION
-RUN wget https://github.com/brentp/somalier/releases/download/v${SOMALIER_VERSION}/somalier --output-document /opt/somalier \
-  && chmod +x /opt/somalier
+RUN wget https://github.com/brentp/somalier/releases/download/v${SOMALIER_VERSION}/somalier --directory-prefix /usr/local/bin/ \
+  && chmod +x /usr/local/bin/somalier
 
 ARG HTSLIB_VERSION
 RUN wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 \

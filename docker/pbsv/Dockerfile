@@ -17,6 +17,7 @@ RUN apt-get -qq update \
 		liblzma-dev \
 		libbz2-dev \
 		libcurl4-openssl-dev \
+		parallel \
 	&& rm -rf /var/lib/apt/lists/*
 
 ARG PBSV_VERSION
