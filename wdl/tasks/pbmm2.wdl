@@ -23,7 +23,8 @@ task pbmm2_align {
 	Int disk_size = ceil((size(movie, "GB") + size(reference_fasta, "GB")) * 4 + 20)
   
   command {
-    set -o pipefail
+    set -euo pipefail
+    
     pbmm2 align \
       --sample ~{sample_id} \
       --log-level INFO \
