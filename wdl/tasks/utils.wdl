@@ -44,6 +44,6 @@ task merge_bams {
 		awsBatchRetryAttempts: runtime_attributes.max_retries
 		queueArn: runtime_attributes.queue_arn
 		zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/htslib:1.14"
+    docker: "~{runtime_attributes.container_registry}/samtools:1.14"
   }
 }
