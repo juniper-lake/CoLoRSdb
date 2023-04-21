@@ -8,7 +8,7 @@ import "../deepvariant/deepvariant.wdl" as DeepVariant
 import "../../tasks/utils.wdl" as utils
 import "../../tasks/trgt.wdl" as Trgt
 
-workflow sample_analysis {
+workflow single_sample {
 
   input {
     Sample sample
@@ -18,7 +18,7 @@ workflow sample_analysis {
     RuntimeAttributes default_runtime_attributes
   }
 
-   # align each movie with pbmm2
+  # align each movie with pbmm2
   scatter (idx in range(length(sample.movies))) {     
     call pbmm2.pbmm2_align {
         input: 
@@ -34,31 +34,43 @@ workflow sample_analysis {
 			"data": pbmm2_align.bam,
 			"index": pbmm2_align.bam_index
 		}
+
+    # get movie name from movie path
+    String movie_name = sub(basename(sample.movies[idx]), "\\..*", "")
+
+    # extract somalier sites from aligned bam
+    call somalier.somalier_extract {
+      input:
+        sample_id = sample.sample_id,
+        movie_name = movie_name,
+        bam = aligned_bam.data,
+        bam_index = aligned_bam.index,
+        reference_fasta = reference.fasta.data,
+        reference_index = reference.fasta.index,
+        somalier_sites_vcf = reference.somalier_sites_vcf,
+        runtime_attributes = default_runtime_attributes
+    }
   }
 
   # check for sample swaps and confirm gender of sample
   call somalier.somalier_relate {
     input:
       sample_id = sample.sample_id,
-      bams = pbmm2_align.bam,
-      bam_indexes = pbmm2_align.bam_index,
-      reference_fasta = reference.fasta.data,
-      reference_index = reference.fasta.index,
-      sample_swap_sites_vcf = reference.somalier_sites_vcf,
+      extracted_somalier_sites = somalier_extract.extracted_sites,
       runtime_attributes = default_runtime_attributes
   }
 
   if (somalier_relate.min_relatedness >= min_relatedness_sample_swap) {
     
-    if (somalier_relate.inferred_sex != "U") {
+    if (somalier_relate.inferred_sex != "UNKNOWN") {
 
       scatter (idx in range(length(pbmm2_align.bam))) {
         # call structural variants with sniffles
         call sniffles.sniffles_discover {
           input:
             sample_id = sample.sample_id,
-            bam = pbmm2_align.bam[idx],
-            bam_index = pbmm2_align.bam_index[idx],
+            bam = aligned_bam[idx].data,
+            bam_index = aligned_bam[idx].index,
             reference_fasta = reference.fasta.data,
             reference_index = reference.fasta.index,
             tr_bed = reference.tandem_repeat_bed,
@@ -66,12 +78,12 @@ workflow sample_analysis {
         }
       }
 
-      scatter (idx in range(length(pbmm2_align.bam))) {
+      scatter (idx in range(length(aligned_bam))) {
         # discover SV signatures with pbsv
         call pbsv.pbsv_discover {
           input:
-            bam = pbmm2_align.bam[idx],
-            bam_index = pbmm2_align.bam_index[idx],
+            bam = aligned_bam[idx].data,
+            bam_index = aligned_bam[idx].index,
             tr_bed = reference.tandem_repeat_bed,
             runtime_attributes = default_runtime_attributes
         }
@@ -106,7 +118,7 @@ workflow sample_analysis {
           bam_index = merge_bams.merged_bam_index,
           reference_fasta = reference.fasta.data,
           reference_index = reference.fasta.index,
-          tandem_repeat_bed = reference.tandem_repeat_bed,
+          tandem_repeat_bed = reference.trgt_tandem_repeat_bed,
           runtime_attributes = default_runtime_attributes
       }
 
@@ -124,7 +136,7 @@ workflow sample_analysis {
     # keep track of sample IDs that are excluded for sample swap between movies
     String qc_fail_relatedness = sample.sample_id
   }
-  if (somalier_relate.inferred_sex == "U") {
+  if (somalier_relate.inferred_sex == "UNKNOWN") {
     # keep track of sample IDs that are excluded for unknown sex
     String qc_fail_sex = sample.sample_id
   }
