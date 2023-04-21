@@ -114,6 +114,7 @@ workflow single_sample {
 
       call Trgt.trgt {
         input:
+          sex = somalier_relate.inferred_sex,
           bam = merge_bams.merged_bam,
           bam_index = merge_bams.merged_bam_index,
           reference_fasta = reference.fasta.data,
