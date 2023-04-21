@@ -1,0 +1,17 @@
+{
+  "deepvariant.sample_id": "String",
+  "deepvariant.aligned_bams": "Array[IndexData]",
+  "deepvariant.reference_name": "String",
+  "deepvariant.reference_fasta": {
+    "data": "File",
+    "index": "File"
+  },
+  "deepvariant.deepvariant_version": "String",
+  "single_sample.default_runtime_attributes": {
+    "preemptible_tries": "Int",
+    "max_retries": "Int",
+    "zones": "String",
+    "queue_arn": "String",
+    "container_registry": "String"
+  }
+}
