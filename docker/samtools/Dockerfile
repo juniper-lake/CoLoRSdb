@@ -17,12 +17,7 @@ RUN apt-get -qq update \
 		liblzma-dev \
 		libbz2-dev \
 		libcurl4-openssl-dev \
-		parallel \
 	&& rm -rf /var/lib/apt/lists/*
-
-ARG PBSV_VERSION
-RUN wget https://github.com/PacificBiosciences/pbsv/releases/download/v${PBSV_VERSION}/pbsv --directory-prefix /usr/local/bin/ \
-	&& chmod +x /usr/local/bin/pbsv
 
 ARG SAMTOOLS_VERSION
 RUN wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 \
@@ -31,3 +26,4 @@ RUN wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSI
 RUN cd /opt/samtools-${SAMTOOLS_VERSION} \
 	&& make \
 	&& make install
+  
