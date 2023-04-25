@@ -1,11 +1,11 @@
 version 1.0
 
-import "../../tasks/pbmm2.wdl" as pbmm2
-import "../../tasks/somalier.wdl" as somalier
-import "../../tasks/sniffles.wdl" as sniffles
-import "../../tasks/pbsv.wdl" as pbsv
+import "../../tasks/pbmm2.wdl" as Pbmm2
+import "../../tasks/somalier.wdl" as Somalier
+import "../../tasks/sniffles.wdl" as Sniffles
+import "../../tasks/pbsv.wdl" as Pbsv
 import "../deepvariant/deepvariant.wdl" as DeepVariant
-import "../../tasks/utils.wdl" as utils
+import "../../tasks/utils.wdl" as Utils
 import "../../tasks/trgt.wdl" as Trgt
 
 workflow single_sample {
@@ -20,7 +20,7 @@ workflow single_sample {
 
   # align each movie with pbmm2
   scatter (idx in range(length(sample.movies))) {     
-    call pbmm2.pbmm2_align {
+    call Pbmm2.pbmm2_align {
         input: 
           movie = sample.movies[idx],
           sample_id = sample.sample_id,
@@ -39,7 +39,7 @@ workflow single_sample {
     String movie_name = sub(basename(sample.movies[idx]), "\\..*", "")
 
     # extract somalier sites from aligned bam
-    call somalier.somalier_extract {
+    call Somalier.somalier_extract {
       input:
         sample_id = sample.sample_id,
         movie_name = movie_name,
@@ -53,7 +53,7 @@ workflow single_sample {
   }
 
   # check for sample swaps and confirm gender of sample
-  call somalier.somalier_relate {
+  call Somalier.somalier_relate {
     input:
       sample_id = sample.sample_id,
       extracted_somalier_sites = somalier_extract.extracted_sites,
@@ -66,7 +66,7 @@ workflow single_sample {
 
       scatter (idx in range(length(pbmm2_align.bam))) {
         # call structural variants with sniffles
-        call sniffles.sniffles_discover {
+        call Sniffles.sniffles_discover {
           input:
             sample_id = sample.sample_id,
             bam = aligned_bam[idx].data,
@@ -80,7 +80,7 @@ workflow single_sample {
 
       scatter (idx in range(length(aligned_bam))) {
         # discover SV signatures with pbsv
-        call pbsv.pbsv_discover {
+        call Pbsv.pbsv_discover {
           input:
             bam = aligned_bam[idx].data,
             bam_index = aligned_bam[idx].index,
@@ -90,6 +90,7 @@ workflow single_sample {
       }
       Array[File] svsig = flatten(pbsv_discover.svsigs)
 
+      # call small variants with deepvariant
       call DeepVariant.deepvariant {
         input:
           sample_id = sample.sample_id,
@@ -100,7 +101,8 @@ workflow single_sample {
           default_runtime_attributes = default_runtime_attributes
       }
 
-      call utils.merge_bams {
+      # merge aligned bams for trgt
+      call Utils.merge_bams {
         input:
           bams = pbmm2_align.bam,
           output_bam_name = "~{sample.sample_id}.~{reference.name}.bam",
@@ -112,6 +114,7 @@ workflow single_sample {
         "index": merge_bams.merged_bam_index
       }
 
+      # genotype tandem repeats with trgt
       call Trgt.trgt {
         input:
           sex = somalier_relate.inferred_sex,
@@ -121,11 +124,6 @@ workflow single_sample {
           reference_index = reference.fasta.index,
           tandem_repeat_bed = reference.trgt_tandem_repeat_bed,
           runtime_attributes = default_runtime_attributes
-      }
-
-      IndexData trgt_repeat_vcf = {
-        "data": trgt.repeat_vcf,
-        "index": trgt.repeat_vcf_index
       }
 
       # keep track of sample IDs that pass QC
@@ -148,7 +146,7 @@ workflow single_sample {
     Array[File]? sniffles_snfs = sniffles_discover.snf
     Array[File]? pbsv_svsigs = svsig
     IndexData? deepvariant_gvcf = deepvariant.gvcf
-    IndexData? trgt_vcf = trgt_repeat_vcf
+    IndexData? trgt_vcf = { "data": select_first([trgt.repeat_vcf]), "index": select_first([trgt.repeat_vcf_index]) }
     String? qc_pass_id = qc_pass
     
     # QC fail
