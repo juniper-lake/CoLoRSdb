@@ -1,236 +1,256 @@
 version 1.0
 
+# Call variants using DeepVariant
+
 import "../../structs.wdl"
 
 workflow deepvariant {
+	input {
+		String sample_id
+		Array[IndexData] aligned_bams
 
-  input {
-    String sample_id
-    Array[IndexData] aligned_bams
+		IndexData reference_fasta
+		String reference_name
 
-    String reference_name
-    IndexData reference_fasta
+		String deepvariant_version
 
-    String deepvariant_version
-
-    RuntimeAttributes default_runtime_attributes
-  }
-
-  Int shards = 64
-
-  scatter (bam_object in aligned_bams) {
-		File bam = bam_object.data
-		File bam_index = bam_object.index
+		RuntimeAttributes default_runtime_attributes
 	}
 
-  call make_examples {
-    input: 
-      sample_id = sample_id,
-      bams = bam,
-      bam_indexes = bam_index,
-      reference_fasta = reference_fasta.data,
-      reference_index = reference_fasta.index,
-      threads = shards,
-      deepvariant_version = deepvariant_version,
-      runtime_attributes = default_runtime_attributes
-  }
-  
-  call call_variants {
-    input: 
-      sample_id = sample_id,
-      reference_name = reference_name,
-      example_tfrecords = make_examples.example_tfrecords,
-      threads = shards,
-      deepvariant_version = deepvariant_version,
-      runtime_attributes = default_runtime_attributes
-  }
+	scatter (bam_object in aligned_bams) {
+		File aligned_bam = bam_object.data
+		File aligned_bam_index = bam_object.index
+	}
 
-  call postprocess_variants {
-    input:
-      sample_id = sample_id,
-      tfrecord = call_variants.tfrecord,
-      nonvariant_site_tfrecords = make_examples.nonvariant_site_tfrecords,
-      reference_name = reference_name,
-      reference_fasta = reference_fasta.data,
-      reference_index = reference_fasta.index,
-      shards = shards,
-      deepvariant_version = deepvariant_version,
-      runtime_attributes = default_runtime_attributes
+	Int total_deepvariant_tasks = 64
+	Int num_shards = 8
+	Int tasks_per_shard = total_deepvariant_tasks / num_shards
 
-  }
+	scatter (shard_index in range(num_shards)) {
+		Int task_start_index = shard_index * tasks_per_shard
 
-  output {
-    IndexData vcf = {"data": postprocess_variants.vcf, "index": postprocess_variants.vcf_index}
-    IndexData gvcf = {"data": postprocess_variants.gvcf, "index": postprocess_variants.gvcf_index}
-    File report = postprocess_variants.report
-  }
+		call deepvariant_make_examples {
+			input:
+				sample_id = sample_id,
+				aligned_bams = aligned_bam,
+				aligned_bam_indices = aligned_bam_index,
+				reference = reference_fasta.data,
+				reference_index = reference_fasta.index,
+				task_start_index = task_start_index,
+				tasks_per_shard = tasks_per_shard,
+				total_deepvariant_tasks = total_deepvariant_tasks,
+				deepvariant_version = deepvariant_version,
+				runtime_attributes = default_runtime_attributes
+		}
+	}
 
+	call deepvariant_call_variants {
+		input:
+			sample_id = sample_id,
+			reference_name = reference_name,
+			example_tfrecord_tars = deepvariant_make_examples.example_tfrecord_tar,
+			total_deepvariant_tasks = total_deepvariant_tasks,
+			deepvariant_version = deepvariant_version,
+			runtime_attributes = default_runtime_attributes
+	}
 
-  
+	call deepvariant_postprocess_variants {
+		input:
+			sample_id = sample_id,
+			tfrecord = deepvariant_call_variants.tfrecord,
+			nonvariant_site_tfrecord_tars = deepvariant_make_examples.nonvariant_site_tfrecord_tar,
+			reference = reference_fasta.data,
+			reference_index = reference_fasta.index,
+			reference_name = reference_name,
+			total_deepvariant_tasks = total_deepvariant_tasks,
+			deepvariant_version = deepvariant_version,
+			runtime_attributes = default_runtime_attributes
+	}
+
+	output {
+		IndexData vcf = {"data": deepvariant_postprocess_variants.vcf, "index": deepvariant_postprocess_variants.vcf_index}
+		IndexData gvcf = {"data": deepvariant_postprocess_variants.gvcf, "index": deepvariant_postprocess_variants.gvcf_index}
+	}
+
+	parameter_meta {
+		sample_id: {help: "Sample ID; used for naming files"}
+		aligned_bams: {help: "Bam and index aligned to the reference genome for each movie associated with all samples in the cohort"}
+		reference: {help: "Reference genome data"}
+		deepvariant_version: {help: "Version of deepvariant to use"}
+		default_runtime_attributes: {help: "Default RuntimeAttributes; spot if preemptible was set to true, otherwise on_demand"}
+	}
 }
 
+task deepvariant_make_examples {
+	input {
+		String sample_id
+		Array[File] aligned_bams
+		Array[File] aligned_bam_indices
 
-task make_examples {
+		File reference
+		File reference_index
 
-  input {
-    String sample_id
-    Array[File] bams
-    Array[File] bam_indexes
+		Int task_start_index
+		Int tasks_per_shard
 
-    File reference_fasta
-    File reference_index
+		Int total_deepvariant_tasks
+		String deepvariant_version
 
-    Int threads
-    String deepvariant_version
+		RuntimeAttributes runtime_attributes
+	}
 
-    RuntimeAttributes runtime_attributes
-  }
-  
-  Int mem_gb = 4 * threads
-	Int disk_size = ceil(size(bams[0], "GB") * length(bams) * 2 + 50)
+	Int task_end_index = task_start_index + tasks_per_shard - 1
+	Int disk_size = ceil(size(aligned_bams[0], "GB") * length(aligned_bams) * 2 + 50)
+	Int mem_gb = tasks_per_shard * 4
 
-  command <<<
-    set -euo pipefail
-    
-    seq 0 ~{threads - 1} \
-    | parallel --jobs ~{threads} \
-      /opt/deepvariant/bin/make_examples \
-        --norealign_reads \
-        --vsc_min_fraction_indels 0.12 \
-        --pileup_image_width 199 \
-        --track_ref_reads \
-        --phase_reads \
-        --partition_size=25000 \
-        --max_reads_per_partition=600 \
-        --alt_aligned_pileup=diff_channels \
-        --add_hp_channel \
-        --sort_by_haplotypes \
-        --parse_sam_aux_fields \
-        --min_mapping_quality=1 \
-        --mode calling \
-        --ref ~{reference_fasta} \
-        --reads ~{sep="," bams} \
-        --examples ~{sample_id}.examples.tfrecord@~{threads}.gz \
-        --gvcf ~{sample_id}.gvcf.tfrecord@~{threads}.gz \
-        --task {}
-  >>>
+	command <<<
+		set -euo pipefail
 
-  output {
-    Array[File] example_tfrecords = glob("~{sample_id}.examples.tfrecord*.gz")
-    Array[File] nonvariant_site_tfrecords = glob("~{sample_id}.gvcf.tfrecord*.gz")
-  }
+		mkdir example_tfrecords nonvariant_site_tfrecords
 
-  runtime {
-    cpu: threads
-    memory: "~{mem_gb} GB"
-    disk: "~{disk_size} GB"
-    disks: "local-disk ~{disk_size} HDD"
-    preemptible: runtime_attributes.preemptible_tries
-    maxRetries: runtime_attributes.max_retries
-    awsBatchRetryAttempts: runtime_attributes.max_retries
-    queueArn: runtime_attributes.queue_arn
-    zones: runtime_attributes.zones
-    docker: "google/deepvariant:~{deepvariant_version}"
-  }
+		seq ~{task_start_index} ~{task_end_index} \
+		| parallel \
+			--jobs ~{tasks_per_shard} \
+			--halt 2 \
+			/opt/deepvariant/bin/make_examples \
+				--norealign_reads \
+				--vsc_min_fraction_indels 0.12 \
+				--pileup_image_width 199 \
+				--track_ref_reads \
+				--phase_reads \
+				--partition_size=25000 \
+				--max_reads_per_partition=600 \
+				--alt_aligned_pileup=diff_channels \
+				--add_hp_channel \
+				--sort_by_haplotypes \
+				--parse_sam_aux_fields \
+				--min_mapping_quality=1 \
+				--mode calling \
+				--ref ~{reference} \
+				--reads ~{sep="," aligned_bams} \
+				--examples example_tfrecords/~{sample_id}.examples.tfrecord@~{total_deepvariant_tasks}.gz \
+				--gvcf nonvariant_site_tfrecords/~{sample_id}.gvcf.tfrecord@~{total_deepvariant_tasks}.gz \
+				--task {}
+
+		tar -zcvf ~{sample_id}.~{task_start_index}.example_tfrecords.tar.gz example_tfrecords
+		tar -zcvf ~{sample_id}.~{task_start_index}.nonvariant_site_tfrecords.tar.gz nonvariant_site_tfrecords
+	>>>
+
+	output {
+		File example_tfrecord_tar = "~{sample_id}.~{task_start_index}.example_tfrecords.tar.gz"
+		File nonvariant_site_tfrecord_tar = "~{sample_id}.~{task_start_index}.nonvariant_site_tfrecords.tar.gz"
+	}
+
+	runtime {
+		docker: "gcr.io/deepvariant-docker/deepvariant:~{deepvariant_version}"
+		cpu: tasks_per_shard
+		memory: mem_gb + " GB"
+		disk: disk_size + " GB"
+		disks: "local-disk " + disk_size + " HDD"
+		preemptible: runtime_attributes.preemptible_tries
+		maxRetries: runtime_attributes.max_retries
+		awsBatchRetryAttempts: runtime_attributes.max_retries
+		queueArn: runtime_attributes.queue_arn
+		zones: runtime_attributes.zones
+	}
 }
 
+task deepvariant_call_variants {
+	input {
+		String sample_id
+		String reference_name
+		Array[File] example_tfrecord_tars
 
-task call_variants {
-  
-  input {
-    String sample_id
-    String reference_name
-    Array[File] example_tfrecords
+		Int total_deepvariant_tasks
+		String deepvariant_version
 
-    String deepvariant_version
-    Int threads
+		RuntimeAttributes runtime_attributes
+	}
 
-    RuntimeAttributes runtime_attributes
-  }
-  
-  String example_tfrecord_path = sub(example_tfrecords[0], "/" + basename(example_tfrecords[0]), "")
-  String outfile = "~{sample_id}.~{reference_name}.call_variants_output.tfrecord.gz"
-	Int disk_size = ceil(size(example_tfrecords[0], "GB") * length(example_tfrecords) * 2 + 100)
+	Int mem_gb = total_deepvariant_tasks * 4
+	Int disk_size = ceil(size(example_tfrecord_tars[0], "GB") * length(example_tfrecord_tars) * 2 + 100)
 
-  command {
-    set -euo pipefail
-    
-    /opt/deepvariant/bin/call_variants \
-      --outfile ~{outfile} \
-      --examples ~{example_tfrecord_path}/~{sample_id}.examples.tfrecord@~{threads}.gz \
-      --checkpoint "/opt/models/pacbio/model.ckpt"
-  }
+	command <<<
+		set -euo pipefail
 
-  output {
-    File tfrecord = outfile
-  }
+		while read -r tfrecord_tar || [[ -n "${tfrecord_tar}" ]]; do
+			tar -zxvf "${tfrecord_tar}"
+		done < ~{write_lines(example_tfrecord_tars)}
 
-  runtime {
-    cpu: threads
-    memory: "8 GB"
-    disk: "~{disk_size} GB"
-    disks: "local-disk ~{disk_size} HDD"
-    preemptible: runtime_attributes.preemptible_tries
-    maxRetries: runtime_attributes.max_retries
-    awsBatchRetryAttempts: runtime_attributes.max_retries
-    queueArn: runtime_attributes.queue_arn
-    zones: runtime_attributes.zones
-    docker: "google/deepvariant:~{deepvariant_version}"
-  }
+		/opt/deepvariant/bin/call_variants \
+			--outfile ~{sample_id}.~{reference_name}.call_variants_output.tfrecord.gz \
+			--examples "example_tfrecords/~{sample_id}.examples.tfrecord@~{total_deepvariant_tasks}.gz" \
+			--checkpoint "/opt/models/pacbio/model.ckpt"
+	>>>
+
+	output {
+		File tfrecord = "~{sample_id}.~{reference_name}.call_variants_output.tfrecord.gz"
+	}
+
+	runtime {
+		docker: "gcr.io/deepvariant-docker/deepvariant:~{deepvariant_version}"
+		cpu: total_deepvariant_tasks
+		memory: mem_gb + " GB"
+		disk: disk_size + " GB"
+		disks: "local-disk " + disk_size + " HDD"
+		preemptible: runtime_attributes.preemptible_tries
+		maxRetries: runtime_attributes.max_retries
+		awsBatchRetryAttempts: runtime_attributes.max_retries
+		queueArn: runtime_attributes.queue_arn
+		zones: runtime_attributes.zones
+	}
 }
 
+task deepvariant_postprocess_variants {
+	input {
+		String sample_id
+		File tfrecord
+		Array[File] nonvariant_site_tfrecord_tars
 
-task postprocess_variants {
-  
-  input {
-    String sample_id
-    File tfrecord
-    Array[File] nonvariant_site_tfrecords
-    
-    String reference_name
-    File reference_fasta
-    File reference_index
+		File reference
+		File reference_index
+		String reference_name
 
-    String deepvariant_version
-    Int shards
+		Int total_deepvariant_tasks
+		String deepvariant_version
 
-    RuntimeAttributes runtime_attributes
-  }
+		RuntimeAttributes runtime_attributes
+	}
 
-  String nonvariant_site_tfrecord_path = sub(nonvariant_site_tfrecords[0], "/" + basename(nonvariant_site_tfrecords[0]), "")
-  Int disk_size = ceil((size(tfrecord, "GB") + size(reference_fasta, "GB") + size(nonvariant_site_tfrecords[0], "GB") * length(nonvariant_site_tfrecords)) * 2 + 20)
-  String outfile = "~{sample_id}.~{reference_name}.deepvariant.vcf.gz"
-  String gvcf_outfile = "~{sample_id}.~{reference_name}.deepvariant.g.vcf.gz"
+	Int disk_size = ceil((size(tfrecord, "GB") + size(reference, "GB") + size(nonvariant_site_tfrecord_tars[0], "GB") * length(nonvariant_site_tfrecord_tars)) * 2 + 20)
 
-  command {
-    set -euo pipefail
-    
-    /opt/deepvariant/bin/postprocess_variants \
-      --ref ~{reference_fasta} \
-      --infile ~{tfrecord} \
-      --outfile ~{outfile} \
-      --nonvariant_site_tfrecord_path ~{nonvariant_site_tfrecord_path}/~{sample_id}.gvcf.tfrecord@~{shards}.gz \
-      --gvcf_outfile ~{gvcf_outfile}
-  }
+	command <<<
+		set -euo pipefail
 
-  output {
-    File vcf = outfile
-    File vcf_index = "~{outfile}.tbi"
-    File gvcf = gvcf_outfile
-    File gvcf_index = "~{gvcf_outfile}.tbi"
-    File report = "~{sample_id}.~{reference_name}.deepvariant.visual_report.html"
-  } 
+		while read -r nonvariant_site_tfrecord_tar || [[ -n "${nonvariant_site_tfrecord_tar}" ]]; do
+			tar -zxvf "${nonvariant_site_tfrecord_tar}"
+		done < ~{write_lines(nonvariant_site_tfrecord_tars)}
 
-  runtime {
-    cpu: 1
-    memory: "32 GB"
-    disk: "~{disk_size} GB"
-    disks: "local-disk ~{disk_size} HDD"
-    preemptible: runtime_attributes.preemptible_tries
-    maxRetries: runtime_attributes.max_retries
-    awsBatchRetryAttempts: runtime_attributes.max_retries
-    queueArn: runtime_attributes.queue_arn
-    zones: runtime_attributes.zones
-    docker: "google/deepvariant:~{deepvariant_version}"
-  }
+		/opt/deepvariant/bin/postprocess_variants \
+			--ref ~{reference} \
+			--infile ~{tfrecord} \
+			--outfile ~{sample_id}.~{reference_name}.deepvariant.vcf.gz \
+			--nonvariant_site_tfrecord_path "nonvariant_site_tfrecords/~{sample_id}.gvcf.tfrecord@~{total_deepvariant_tasks}.gz" \
+			--gvcf_outfile ~{sample_id}.~{reference_name}.deepvariant.g.vcf.gz
+	>>>
+
+	output {
+		File vcf = "~{sample_id}.~{reference_name}.deepvariant.vcf.gz"
+		File vcf_index = "~{sample_id}.~{reference_name}.deepvariant.vcf.gz.tbi"
+		File gvcf = "~{sample_id}.~{reference_name}.deepvariant.g.vcf.gz"
+		File gvcf_index = "~{sample_id}.~{reference_name}.deepvariant.g.vcf.gz.tbi"
+	}
+
+	runtime {
+		docker: "gcr.io/deepvariant-docker/deepvariant:~{deepvariant_version}"
+		cpu: 2
+		memory: "32 GB"
+		disk: disk_size + " GB"
+		disks: "local-disk " + disk_size + " HDD"
+		preemptible: runtime_attributes.preemptible_tries
+		maxRetries: runtime_attributes.max_retries
+		awsBatchRetryAttempts: runtime_attributes.max_retries
+		queueArn: runtime_attributes.queue_arn
+		zones: runtime_attributes.zones
+	}
 }
