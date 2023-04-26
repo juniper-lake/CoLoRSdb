@@ -132,3 +132,49 @@ task index_vcf {
     docker: "~{runtime_attributes.container_registry}/htslib:1.14"
   }
 }
+
+
+task concat_vcfs {
+  
+  input {
+    Array[File] vcfs
+    String output_vcf_name
+
+    RuntimeAttributes runtime_attributes
+  }
+
+  Int threads = 1
+  Int disk_size = ceil(size(vcfs[0], "GB") * length(vcfs) * 2 + 20)
+
+  command {
+    set -euo pipefail
+
+    if [[ "~{length(vcfs)}" -eq 1 ]]; then
+      mv ~{vcfs[0]} ~{output_vcf_name}
+    else
+      # will throw error if vcfs are not in correct order
+      # could --allow-overlaps but would require sort after and that's compute intensive
+      bcftools concat \
+        --threads ~{threads} \
+        -o ~{output_vcf_name} \
+        ~{sep=' ' vcfs}
+    fi
+  }
+
+  output {
+    File concatenated_vcf = output_vcf_name
+  }
+
+  runtime {
+    cpu: threads
+    memory: "2 GB"
+    disk: "~{disk_size} GB"
+    disks: "local-disk ~{disk_size} HDD"
+    preemptible: runtime_attributes.preemptible_tries
+    maxRetries: runtime_attributes.max_retries
+    awsBatchRetryAttempts: runtime_attributes.max_retries
+    queueArn: runtime_attributes.queue_arn
+    zones: runtime_attributes.zones
+    docker: "~{runtime_attributes.container_registry}/bcftools:1.14"
+  }
+}

@@ -7,40 +7,35 @@ task pbsv_discover {
   input {
     File bam
     File bam_index
-    File tr_bed
+
+    String region
+    File tandem_repeat_bed
 
     RuntimeAttributes runtime_attributes
     }
 
   String prefix = basename(bam, ".bam")
-  Int threads = 16
-  Int mem_gb = 4 * threads
-  Int disk_size = ceil((size(bam, "GB") + size(tr_bed, "GB")) * 2.5 + 20)
+
+  Int disk_size = ceil((size(bam, "GB") + size(tandem_repeat_bed, "GB")) * 2.5 + 20)
 
   command<<<
     set -euo pipefail
 
-    samtools view -H ~{bam} \
-    | grep '^@SQ' \
-    | cut -f2 \
-    | cut -d':' -f2 \
-    | parallel --jobs ~{threads} \
-      pbsv discover \
-        --log-level INFO \
-        --hifi \
-        --region {} \
-        --tandem-repeats ~{tr_bed} \
-        ~{bam} \
-        ~{prefix}.{}.svsig.gz
+    pbsv discover \
+      --hifi \
+      --region ~{region} \
+      --tandem-repeats ~{tandem_repeat_bed} \
+      ~{bam} \
+      ~{prefix}.{region}.svsig.gz
     >>>
 
   output {
-    Array[File] svsigs = glob("~{prefix}.*.svsig.gz")
+    File svsig = "~{prefix}.{region}.svsig.gz"
   }
 
   runtime {
-    cpu: threads
-    memory: "~{mem_gb} GB"
+    cpu: 2
+    memory: "8 GB"
 		disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
 		preemptible: runtime_attributes.preemptible_tries
@@ -58,6 +53,8 @@ task pbsv_call {
   input {
     String sample_id
     Array[File] svsigs
+    Int? sample_count
+    String region
 
     String reference_name
     File reference_fasta
@@ -68,28 +65,30 @@ task pbsv_call {
   }
   
   Int threads = 8
-  String output_filename = "~{sample_id}.~{reference_name}.pbsv.vcf"
+  Int mem_gb = if select_first([sample_count, 1]) > 50 then 96 else 64
   Int disk_size = ceil((size(svsigs, "GB") + size(reference_fasta, "GB")) * 2 + 20)
 
   command<<<
     set -euo pipefail
 
     pbsv call \
+      --log-level INFO \
       --hifi \
       --min-sv-length 20 \
       --num-threads ~{threads} \
       ~{reference_fasta} \
       ~{sep=" " svsigs} \
-      ~{output_filename}
+      ~{sample_id}.~{reference_name}.~{region}.pbsv.vcf
   >>>
 
   output {
-    File vcf = output_filename
+    File vcf = "~{sample_id}.~{reference_name}.~{region}.pbsv.vcf"
+    File log = stdout()
   }
   
   runtime {
     cpu: threads
-    memory: "64 GB"
+    memory: "~{mem_gb} GB"
 		disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
 		preemptible: runtime_attributes.preemptible_tries
