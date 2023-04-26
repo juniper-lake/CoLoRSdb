@@ -64,44 +64,7 @@ workflow single_sample {
     
     if (somalier_relate.inferred_sex != "UNKNOWN") {
 
-      scatter (idx in range(length(pbmm2_align.bam))) {
-        # call structural variants with sniffles
-        call Sniffles.sniffles_discover {
-          input:
-            sample_id = sample.sample_id,
-            bam = aligned_bam[idx].data,
-            bam_index = aligned_bam[idx].index,
-            reference_fasta = reference.fasta.data,
-            reference_index = reference.fasta.index,
-            tr_bed = reference.tandem_repeat_bed,
-            runtime_attributes = default_runtime_attributes
-        }
-      }
-
-      scatter (idx in range(length(aligned_bam))) {
-        # discover SV signatures with pbsv
-        call Pbsv.pbsv_discover {
-          input:
-            bam = aligned_bam[idx].data,
-            bam_index = aligned_bam[idx].index,
-            tr_bed = reference.tandem_repeat_bed,
-            runtime_attributes = default_runtime_attributes
-        }
-      }
-      Array[File] svsig = flatten(pbsv_discover.svsigs)
-
-      # call small variants with deepvariant
-      call DeepVariant.deepvariant {
-        input:
-          sample_id = sample.sample_id,
-          aligned_bams = aligned_bam,
-          reference_name = reference.name,
-          reference_fasta = reference.fasta,
-          deepvariant_version = deepvariant_version,
-          default_runtime_attributes = default_runtime_attributes
-      }
-
-      # merge aligned bams for trgt
+      # merge aligned bams for trgt and pbsv
       call Utils.merge_bams {
         input:
           bams = pbmm2_align.bam,
@@ -112,6 +75,41 @@ workflow single_sample {
       IndexData merged_bam = {
         "data": merge_bams.merged_bam, 
         "index": merge_bams.merged_bam_index
+      }
+
+      scatter (idx in range(length(reference.chromosomes))) {
+        # discover SV signatures with pbsv
+        call Pbsv.pbsv_discover {
+          input:
+            bam = merged_bam.data,
+            bam_index = merged_bam.index,
+            region = reference.chromosomes[idx],
+            tandem_repeat_bed = reference.tandem_repeat_bed,
+            runtime_attributes = default_runtime_attributes
+        }
+      }
+
+      # call structural variants with sniffles
+      call Sniffles.sniffles_discover {
+        input:
+          sample_id = sample.sample_id,
+          bam = merged_bam.data,
+          bam_index = merged_bam.index,
+          reference_fasta = reference.fasta.data,
+          reference_index = reference.fasta.index,
+          tr_bed = reference.tandem_repeat_bed,
+          runtime_attributes = default_runtime_attributes
+      }
+
+      # call small variants with deepvariant
+      call DeepVariant.deepvariant {
+        input:
+          sample_id = sample.sample_id,
+          aligned_bams = aligned_bam,
+          reference_name = reference.name,
+          reference_fasta = reference.fasta,
+          deepvariant_version = deepvariant_version,
+          default_runtime_attributes = default_runtime_attributes
       }
 
       # genotype tandem repeats with trgt
@@ -143,8 +141,8 @@ workflow single_sample {
   output {
     # QC pass
     IndexData? pbmm2_merged_bam = merged_bam
-    Array[File]? sniffles_snfs = sniffles_discover.snf
-    Array[File]? pbsv_svsigs = svsig
+    File? sniffles_snfs = sniffles_discover.snf
+    Array[File]? pbsv_svsigs = pbsv_discover.svsig
     IndexData? deepvariant_gvcf = deepvariant.gvcf
     IndexData? trgt_vcf = { "data": select_first([trgt.repeat_vcf]), "index": select_first([trgt.repeat_vcf_index]) }
     String? qc_pass_id = qc_pass
