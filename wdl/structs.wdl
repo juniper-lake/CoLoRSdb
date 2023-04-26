@@ -21,6 +21,8 @@ struct ReferenceData {
 	String name
 	IndexData fasta
 
+	Array[String] chromosomes
+
 	File tandem_repeat_bed
 	File trgt_tandem_repeat_bed
 
