@@ -13,7 +13,7 @@ workflow cohort_analysis {
 
     Array[String] sample_ids
     Array[IndexData] aligned_bams
-    Array[File] svsigs
+    Array[Array[File]] svsigs
     Array[IndexData] gvcfs
     Array[File] snfs
     Array[IndexData] trgt_vcfs
@@ -27,7 +27,6 @@ workflow cohort_analysis {
 		File gvcf = gvcf_object.data
 		File gvcf_index = gvcf_object.index
 	}
-  
 
   # joint call small variants with GLnexus
   call Glnexus.glnexus {
@@ -39,14 +38,25 @@ workflow cohort_analysis {
       runtime_attributes = default_runtime_attributes
   }
 
-  # joint call structural variants with pbsv (THIS NEEDS TO BE ALTERED FOR LARGE COHORTS, ADD JASMINE)
-  call Pbsv.pbsv_call {
+  # joint call structural variants with pbsv
+  scatter (idx in range(length(reference.chromosomes))) {
+    call Pbsv.pbsv_call {
+      input:
+        sample_id = cohort_id,
+        svsigs = svsigs[idx],
+        sample_count = length(sample_ids),
+        region = reference.chromosomes[idx],
+        reference_name = reference.name,
+        reference_fasta = reference.fasta.data,
+        reference_index = reference.fasta.index,
+        runtime_attributes = default_runtime_attributes
+    }
+  }
+
+  call Utils.concat_vcfs {
     input:
-      sample_id = cohort_id,
-      svsigs = svsigs,
-      reference_name = reference.name,
-      reference_fasta = reference.fasta.data,
-      reference_index = reference.fasta.index,
+      vcfs = pbsv_call.vcf,
+      output_vcf_name = "~{cohort_id}.~{reference.name}.pbsv.vcf",
       runtime_attributes = default_runtime_attributes
   }
 
@@ -68,7 +78,7 @@ workflow cohort_analysis {
 	}
 
   if (!aggregate) {
-    # phase pbsv and deepvariant vcfs (HOW WILL JASMINE AFFECT THIS?)
+    # phase pbsv and deepvariant vcfs
     call Hiphase.hiphase {
       input:
         cohort_id = cohort_id,
@@ -77,7 +87,7 @@ workflow cohort_analysis {
         aligned_bam_indexes = aligned_bam_index,
         deepvariant_vcf = glnexus.vcf,
         deepvariant_vcf_index = glnexus.vcf_index,
-        pbsv_vcf = pbsv_call.vcf,
+        pbsv_vcf = concat_vcfs.concatenated_vcf,
         reference_fasta = reference.fasta.data,
         reference_index = reference.fasta.index,
         runtime_attributes = default_runtime_attributes
@@ -114,6 +124,7 @@ workflow cohort_analysis {
     IndexData cohort_pbsv_vcf = { "data": select_first([index_phased_pbsv_vcf.zipped_vcf]), "index": select_first([index_phased_pbsv_vcf.zipped_vcf_index]) }
     IndexData cohort_sniffles_vcf = { "data": select_first([zip_index_sniffles_vcf.zipped_vcf]), "index": select_first([zip_index_sniffles_vcf.zipped_vcf_index]) }
     # trgt, combine in some way?
+    Array[File] cohort_pbsv_log = pbsv_call.log # for testing memory usage
 
     # Aggregate = false
     File? hiphase_stats = hiphase.stats
