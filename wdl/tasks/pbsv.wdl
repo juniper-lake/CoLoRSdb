@@ -60,12 +60,15 @@ task pbsv_call {
     File reference_fasta
     File reference_index
 
+    Int? pbsv_call_mem_gb
+
     RuntimeAttributes runtime_attributes
 
   }
   
   Int threads = 8
-  Int mem_gb = if select_first([sample_count, 1]) > 50 then 96 else 64
+  Int default_mem_gb = if select_first([sample_count, 1]) > 3 then 96 else 64
+	Int mem_gb = select_first([pbsv_call_mem_gb, default_mem_gb])
   Int disk_size = ceil((size(svsigs, "GB") + size(reference_fasta, "GB")) * 2 + 20)
 
   command<<<
