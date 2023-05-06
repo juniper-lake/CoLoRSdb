@@ -11,6 +11,8 @@ from tempfile import NamedTemporaryFile
 import pytest
 from vcf_anonymizer import VCFParser
 import random
+import inspect
+import sys
 
 
 def get_vcf_file(vcf_lines):
@@ -101,9 +103,16 @@ def test_sample_shuffling():
         assert variant.sample_data == ['1/2:60', '0/1:60', '0/2:60'], "samples were not correctly shuffled"    
 
 
+def run_all_test_functions(mod):
+    """Run all functions that don't require inputs"""
+    all_functions = inspect.getmembers(mod, inspect.isfunction)
+    for key, value in all_functions:
+        if str(inspect.signature(value)) == "()":
+            value()
+
+
+
 if __name__ == '__main__':
     """ This is executed when run from the command line """
 
-    test_add_meta()
-    test_change_samples()
-    test_sample_shuffling()
+    run_all_test_functions(sys.modules[__name__])
