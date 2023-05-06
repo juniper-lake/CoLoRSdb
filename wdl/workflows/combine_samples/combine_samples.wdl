@@ -1,15 +1,10 @@
 version 1.0
 
-import "../../tasks/pbsv.wdl" as Pbsv
-import "../../tasks/sniffles.wdl" as Sniffles
-import "../../tasks/glnexus.wdl" as Glnexus
-import "../../tasks/hiphase.wdl" as Hiphase
-import "../../tasks/utils.wdl" as Utils
+import "../../tasks/somalier.wdl" as Somalier
 
 workflow cohort_analysis {
   input {
     String cohort_id
-    Boolean aggregate
 
     Array[String] sample_ids
     Array[IndexData] aligned_bams

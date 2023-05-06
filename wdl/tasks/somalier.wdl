@@ -6,7 +6,7 @@ task somalier_extract {
 
   input {
     String sample_id
-    String movie_name
+    String? movie_name
     File bam
     File bam_index
 
@@ -28,7 +28,7 @@ task somalier_extract {
       --fasta=~{reference_fasta} \
       --sites=~{somalier_sites_vcf} \
       --out-dir=extracted \
-      --sample-prefix=~{movie_name}_ \
+      ~{"--sample-prefix=" + movie_name} \
       ~{bam} 
 
   >>>
@@ -51,7 +51,7 @@ task somalier_extract {
   }
 }
 
-task somalier_relate {
+task somalier_relate_movies {
 
   input {
     String sample_id
@@ -102,6 +102,53 @@ task somalier_relate {
     File samples = "~{sample_id}.somalier.samples.tsv"
     Float min_relatedness = read_float("min_relatedness.txt")
     String inferred_sex = read_string("inferred_sex.txt")
+  }
+
+  runtime {
+    cpu: threads
+    memory: "8 GB"
+    disk: "~{disk_size} GB"
+    disks: "local-disk ~{disk_size} HDD"
+    preemptible: runtime_attributes.preemptible_tries
+    maxRetries: runtime_attributes.max_retries
+    awsBatchRetryAttempts: runtime_attributes.max_retries
+    queueArn: runtime_attributes.queue_arn
+    zones: runtime_attributes.zones
+    docker: "~{runtime_attributes.container_registry}/somalier:0.2.16"
+  }
+}
+
+
+task somalier_relate_samples {
+
+  input {
+    String sample_id
+    Array[File] extracted_somalier_sites
+
+    RuntimeAttributes runtime_attributes
+  }
+
+  Int n_files = length(extracted_somalier_sites)
+  Int disk_size = 20 # might want to increase this
+  Int threads = 1
+
+  command<<<
+    set -euo pipefail
+
+    # calculate relatedness among movies from extracted, genotype-like information
+    somalier relate \
+      --min-depth=4 \
+      --output-prefix=~{sample_id}.somalier \
+      ~{sep=" " extracted_somalier_sites}
+
+    # do stuff here to get list of samples that have max pairwise relatedness of 1/8
+  >>>
+
+  output {
+    File groups = "~{sample_id}.somalier.groups.tsv"
+    File html = "~{sample_id}.somalier.html"
+    File pairs = "~{sample_id}.somalier.pairs.tsv"
+    File samples = "~{sample_id}.somalier.samples.tsv"
   }
 
   runtime {

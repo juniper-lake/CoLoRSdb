@@ -8,7 +8,7 @@ import "../deepvariant/deepvariant.wdl" as DeepVariant
 import "../../tasks/utils.wdl" as Utils
 import "../../tasks/trgt.wdl" as Trgt
 
-workflow single_sample {
+workflow find_variants {
 
   input {
     Sample sample
