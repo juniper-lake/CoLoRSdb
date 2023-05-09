@@ -7,12 +7,13 @@ Usage: pytest -v test_vcf_anonymizer.py
 
 __version__ = "0.1.0"
 
-from tempfile import NamedTemporaryFile
 import pytest
-from vcf_anonymizer import VCFParser
+from tempfile import NamedTemporaryFile
+from parser import VCFParser
 import random
 import inspect
 import sys
+from aggregate_trgt_vcfs import aggregate_trgt_vcfs
 
 
 def get_vcf_file(vcf_lines):
@@ -57,7 +58,7 @@ def test_add_meta():
         vcf.add_meta(test_key, test_value)
 
 
-def test_change_samples():
+def test_change_sample_names():
     """Test adding metadata line and printing header"""
     vcf_lines = [
         '##fileformat=VCFv4.1\n',
@@ -103,12 +104,8 @@ def test_sample_shuffling():
         assert variant.sample_data == ['1/2:60', '0/1:60', '0/2:60'], "samples were not correctly shuffled"    
 
 
-def run_all_test_functions(mod):
-    """Run all functions that don't require inputs"""
-    all_functions = inspect.getmembers(mod, inspect.isfunction)
-    for key, value in all_functions:
-        if str(inspect.signature(value)) == "()":
-            value()
+def test_update_genotype():
+    """Test updating the genotype based on order of the alt alleles"""
 
 
 

@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
 """
-This tool anonymizes multi-sample vcf files by:
-(1) randomizing the order of sample-specific data on a per-variant basis and
-(2) changing the sample names to an arbitrary counter starting with the provided prefix.
-
-It also adds a metadata line to the vcf file to indicate that the file has been anonymized.
+The VCFParser class was built to facilitate anonymizing VCF files.
 """
 
 __version__ = "0.1.0"
 
 from loguru import logger
-import sys
-import argparse
 import gzip
 import os
 from codecs import open, getreader
@@ -88,9 +82,14 @@ class VCFParser(object):
 
 
     
-    def print_header(self):
+    def print_metadata(self):
         """Returns a string with the metadata and header line."""
-        return '\n'.join(self.metadata) + '\n' + '#' + '\t'.join(self.header) + '\n'
+        return '\n'.join(self.metadata)
+
+
+    def print_headerline(self):
+        """Returns a string with the metadata and header line."""
+        return '#' + '\t'.join(self.header)
     
 
     def __iter__(self):
@@ -142,84 +141,33 @@ class VariantRecord(object):
     def __init__(self, variant_line, shuffle_samples=False):
         super().__init__()
         logger.debug("Creating VariantRecords object")
-
+        self.line = variant_line
+        self.chrom = variant_line[0]
+        self.pos = variant_line[1]
+        self.id = variant_line[2]
+        self.ref = variant_line[3]
+        self.alts = variant_line[4].split(',')
+        self.alleles = [self.ref] + self.alts
+        self.info = variant_line[7]
+        self.format = variant_line[8]
         self.variant_data = variant_line[:9]
-        self.original_sample_data = variant_line[9:]                
-        self.sample_data = self.original_sample_data.copy()
-        
+        self.sample_data = variant_line[9:]
+        self.genotypes = [map(int,sample.split(':')[0].split('/')) for sample in self.sample_data]
+        self.full_genotypes = [[self.alleles[hap] for hap in genotype] for genotype in self.genotypes]
+
         if shuffle_samples:
             self.sample_data = random.sample(self.sample_data, len(self.sample_data))
+            self.line = self.variant_data + self.sample_data
 
 
     def __str__(self):
         """Return a string representation of the variant record."""
-        return '\t'.join(self.variant_data + self.sample_data)
-    
+        return '\t'.join(self.line)
 
-def cli(args):
-    """Parse VCF, change sample names, update metadata, and print shuffled VCF to stdout or file."""
-    
-    if args.outfile:
-        if os.path.isfile(args.outfile):
-            raise IOError(f"Output file {args.outfile} already exists.")
-        
-    vcf = VCFParser(args.vcf)
 
-    # change sample names
-    if (n_samples := len(vcf.samples)) < 2:
-       raise IOError("This VCF file only contains one sample, so anonymization is not useful.")
-    else:
-        vcf.change_sample_names([f'{args.prefix}_{i}' for i in range(1, n_samples+1)])
-
-    # add metadata line
-    vcf.add_meta('commandline', 'vcf_anonymizer.py was used to anonymize this file by randomizing the order of \
-                 sample-specific data (i.e. genotypes) on a per-variant basis and changing the sample names')
-
-    if args.outfile:
-        logger.info(f"Writing anonymized VCF to {args.outfile}")
-        with open(args.outfile, mode='w', encoding='utf-8', errors='strict') as out:
-            # print metadata and header line
-            out.write(vcf.print_header())
-
-            # print each record with samples shuffled
-            for variant in vcf(shuffle_samples=True):
-                out.write(str(variant) + '\n')
-    else:
-        # print header
-        print(vcf.print_header())
-
-        # print each record with samples shuffled
-        for variant in vcf(shuffle_samples=True):
-            print(variant)
-
-    logger.success("Successfully terminated")
-    
-    
-if __name__ == '__main__':
-    """This is executed when run from the command line."""
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("vcf", help="optionally gzipped VCF file to be randomized")
-    parser.add_argument("prefix", help="prefix of output VCF file")
-    parser.add_argument(
-        "--outfile",
-        dest="outfile",
-        help="output file name"
-    )
-    parser.add_argument(
-        "--loglevel", 
-        dest="loglevel", 
-        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], 
-        default='INFO', 
-        help="set the logging level"
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s (version {version})".format(version=__version__)
-    )
-
-    args = parser.parse_args()
-
-    logger.configure(handlers=[{"sink": sys.stderr, "level": args.loglevel}])
-
-    cli(args)
+    def update_genotypes(self, ref:str, alts:list):
+        """Update genotype and haplotypes based on provided alleles."""
+        alleles = [ref] + alts
+        self.genotypes = [[alleles.index(hap) for hap in full_genotype] for full_genotype in self.full_genotypes]
+        self.sample_data = [':'.join(['/'.join(map(str,self.genotypes[i]))] + self.sample_data[i].split(':')[1:]) for i in range(len(self.genotypes))]
+        self.line = self.variant_data + self.sample_data
