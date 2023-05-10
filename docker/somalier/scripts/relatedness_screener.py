@@ -17,7 +17,7 @@ import os
 
 class NoRelation(object):
     """Object representing a group of samples with relatedness below some threshold."""
-    def __init__(self, infile:str, max_relatedness:float, sample_order:list=None, coverages:list=None):
+    def __init__(self, infile:str, max_relatedness:float=0.125, sample_order:list=None, coverages:list=None):
         super().__init__()
         self.header = ['#sample_a', 'sample_b','relatedness', 'ibs0', 'ibs2', 'hom_concordance',
        'hets_a', 'hets_b', 'hets_ab', 'shared_hets', 'hom_alts_a',
@@ -50,8 +50,15 @@ class NoRelation(object):
             self.samples = sorted(list(set(self.pairs['#sample_a'].tolist() + self.pairs['sample_b'].tolist())))
 
         # check that the number of samples matches the number of coverages
-        if self.coverages is not None and len(self.coverages) != len(self.samples):
-            raise ValueError(f"Number of coverages ({len(self.coverages)}) does not match number of samples ({len(self.samples)})")
+        if self.coverages is not None:
+            if len(self.coverages) != len(self.samples):
+                raise ValueError(f"Number of coverages ({len(self.coverages)}) does not match number of samples ({len(self.samples)})")
+            else:
+                try: 
+                    self.coverages = [int(x) for x in self.coverages]
+                except:
+                    raise ValueError(f"Coverages must be integers, but provided coverages were {self.coverages}")
+                self.samples_sorted_by_coverage = [x for _,x in sorted(zip(self.coverages, self.samples), reverse=False)]
         
         # check that the samples in the pairs file match the provided samples
         if set(self.samples) != set(self.pairs['#sample_a'].tolist() + self.pairs['sample_b'].tolist()):
@@ -62,8 +69,6 @@ class NoRelation(object):
         # check if any samples are related
         if self.pairs['relatedness'].max() <= self.max_relatedness:
             logger.info(f"All samples are below the relatedness threshold of {self.max_relatedness}, so no samples will be removed.")
-            # should return final outputs here array of samples names and Drop boolean
-            self.qc_pass_related = ['true'] * len(self.samples)
         else:
             logger.info(f"Removing samples with relatedness > {self.max_relatedness}")
             self.remove_related_samples()
@@ -81,7 +86,8 @@ class NoRelation(object):
             if self.coverages is None:
                 self.dropped_samples.append(most_common_samples[0])
             else:
-                self.dropped_samples.append([x for _,x in sorted(zip(self.coverages, self.samples), reverse=False)][0])
+                # this is WRONG, just drops the lowest coverage sample, not the one with the most relations
+                self.dropped_samples.append(sorted(most_common_samples,key=self.samples_sorted_by_coverage.index)[0])
             logger.info(f"Removing sample [{self.dropped_samples[-1]}], related to {count} other samples")
             self.pairs = self.pairs.loc[~(self.pairs['#sample_a'] == self.dropped_samples[-1]) & ~(self.pairs['sample_b'] == self.dropped_samples[-1])]
 
@@ -106,34 +112,7 @@ def restricted_float(x, min=0.0, max=1.0):
     return x
 
 
-def cli(args):
-    """Remove unrelated samples from cohort and print TSV with samples names on first row and keep boolean on second row"""
-
-    if args.outfile:
-        if os.path.isfile(args.outfile):
-            raise IOError(f"Output file {args.outfile} already exists.")
-    
-    cohort = NoRelation(args.somalier_pairs_tsv, max_relatedness=args.max_relatedness, sample_order=args.sample_order, coverages=args.coverages)
-
-    if args.outfile:
-        with open(args.outfile, mode='w', encoding='utf-8', errors='strict') as out:
-            # print sample names in provided order
-            out.write("\t".join(cohort.samples))
-
-            # print keep/drop for each sample
-            out.write("\t".join(cohort.sorted_keep_drop))
-    else:
-        # print sample names in provided order
-        print("\t".join(cohort.samples))
-
-        # print keep/drop for each sample
-        print("\t".join(cohort.sorted_keep_drop))
-        
-    logger.success("Successfully terminated")
-
-    
-if __name__ == '__main__':
-    """This is executed when run from the command line."""
+def parse_args(args):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("somalier_pairs_tsv", help="pairs tsv output from somalier relate")
     parser.add_argument('--max_relatedness',
@@ -143,12 +122,12 @@ if __name__ == '__main__':
                         help="maximum relatedness to consider unrelated")
     parser.add_argument("--sample_order", 
                         dest="sample_order",
-                        type=list,
+                        type=str,
                         nargs='+',
                         help="list of samples names sorted in preferred order of output, should be same order as coverages")
     parser.add_argument("--coverages", 
                         dest="coverages",
-                        type=list,
+                        type=int,
                         nargs='+',
                         help="list of coverages used to determine which sample to drop in case of tie, should be same order as sample_order")
     parser.add_argument(
@@ -169,10 +148,41 @@ if __name__ == '__main__':
         version="%(prog)s (version {version})".format(version=__version__)
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def flag_related_samples(somalier_pairs:str, max_relatedness:float, sample_order:list=None, coverages:list=None, outfile:str=None):
+    """Remove unrelated samples from cohort and print TSV with samples names on first row and keep/drop boolean on second row"""
+
+    # check if outfile exists
+    if outfile:
+        if not outfile.endswith('.vcf'):
+            raise ValueError("Output file should end in .vcf")
+        if os.path.isfile(outfile):
+            raise IOError(f"Output file {outfile} already exists.")
+        else:
+            file = open(outfile, 'w')
+    else:
+        logger.info("No output file provided, printing to stdout")
+        file = sys.stdout
+
+    cohort = NoRelation(somalier_pairs, max_relatedness=max_relatedness, sample_order=sample_order, coverages=coverages)
+
+    # print sample names in provided order
+    print("\t".join(cohort.samples), file=file)
+
+    # print keep/drop for each sample
+    print("\t".join(cohort.sorted_keep_drop), file=file)
+        
+    logger.success("Successfully terminated")
+
     
-    # set up logging
+if __name__ == '__main__':
+    """This is executed when run from the command line."""
+
+    args = parse_args(sys.argv[1:])
+    
     logger.configure(handlers=[{"sink": sys.stderr, "level": args.loglevel}])
 
-    cli(args)
+    flag_related_samples(args.somalier_pairs_tsv, args.max_relatedness, args.sample_order, args.coverages, args.outfile)
     
