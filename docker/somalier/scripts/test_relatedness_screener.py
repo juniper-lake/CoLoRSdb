@@ -9,8 +9,7 @@ __version__ = "0.1.0"
 
 from tempfile import NamedTemporaryFile
 import pytest
-from relatedness_screener import NoRelation
-from relatedness_screener import most_common
+from relatedness_screener import NoRelation, most_common, flag_related_samples
 import inspect
 import sys
 
@@ -115,7 +114,22 @@ def test_wrong_sample_names():
     file = get_file(lines)
 
     with pytest.raises(ValueError):
-        cohort = NoRelation(file, sample_order=['not_child','dad','mom'])
+        NoRelation(file, sample_order=['not_child','dad','mom'])
+
+
+def test_wrong_coverage_type():
+    """Test if coverages are integers or not"""
+    lines = [
+        '#sample_a\tsample_b\trelatedness\tibs0\tibs2\thom_concordance\thets_a\thets_b\thets_ab\t'
+        'shared_hets\thom_alts_a\thom_alts_b\tshared_hom_alts\tn\tx_ibs0\tx_ibs2\texpected_relatedness\n',
+        'child\tdad\t0.475\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n',
+        'child\tmom\t0.512\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n',
+        'mom\tdad\t0.05\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n'
+        ]
+    file = get_file(lines)
+
+    with pytest.raises(ValueError):
+        NoRelation(file, sample_order=['child','dad','mom'], coverages=['10X','20X','30X'])
 
 
 def test_sample_order():
@@ -140,6 +154,29 @@ def test_sample_order():
     cohort = NoRelation(file, sample_order=['child','dad','mom','bro'])
     assert cohort.samples == ['child','dad','mom','bro'], "sample order explicitly set"
     assert cohort.sorted_keep_drop == ['drop', 'keep', 'keep', 'drop'], "sample order explicitly set"
+    
+
+def test_flag_related_samples(capfd):
+    """Test output of main function to flag related samples"""
+    lines = [
+        '#sample_a\tsample_b\trelatedness\tibs0\tibs2\thom_concordance\thets_a\thets_b\thets_ab\t'
+        'shared_hets\thom_alts_a\thom_alts_b\tshared_hom_alts\tn\tx_ibs0\tx_ibs2\texpected_relatedness\n',
+        'child\tdad\t0.475\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n',
+        'child\tmom\t0.512\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n',
+        'child\tbro\t0.497\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n',
+        'bro\tdad\t0.475\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n',
+        'bro\tmom\t0.503\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n',
+        'mom\tdad\t0.05\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n'
+        'dad_bro\tchild\t0.26\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n'
+        'dad_bro\tbro\t0.24\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n'
+        'dad_bro\tdad\t0.50\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n'
+        'dad_bro\tmom\t0.03\t0\t982\t0.977\t293\t280\t336\t165\t480\t475\t464\t988\t0\t85\t-1.0\n'
+        ]
+  
+    file = get_file(lines)
+    flag_related_samples(file, max_relatedness=0.125, sample_order=['dad','dad_bro', 'mom','bro','child'], coverages=[30, 40, 20, 50, 60])
+    out, err = capfd.readouterr()
+    assert out == "dad\tdad_bro\tmom\tbro\tchild\ndrop\tkeep\tkeep\tdrop\tdrop\n", "related samples flagged correctly"
 
 
 def run_all_test_functions(mod):
