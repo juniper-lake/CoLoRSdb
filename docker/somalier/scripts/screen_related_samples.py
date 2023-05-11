@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-This tool parses the pairs.tsv output of somalier relate to determine which samples to 
+Parse the pairs.tsv from somalier relate to determine which samples to 
 drop from a cohort in order to keep relatedness below some threshold.
 """
 

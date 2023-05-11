@@ -2,14 +2,14 @@
 """
 Tests to make sure the relatedness screener behaves as expected.
 
-Usage: pytest -v test_relatedness_screener.py
+Usage: pytest -v test_screen_related_samples.py
 """
 
 __version__ = "0.1.0"
 
 from tempfile import NamedTemporaryFile
 import pytest
-from relatedness_screener import NoRelation, most_common, flag_related_samples
+from screen_related_samples import NoRelation, most_common, flag_related_samples
 import inspect
 import sys
 
