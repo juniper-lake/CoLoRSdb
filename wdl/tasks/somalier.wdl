@@ -1,12 +1,14 @@
 version 1.0
 
+# Extract genotypes from known loci and compare across samples/movies for QC
+
 import "../structs.wdl"
 
 task somalier_extract {
 
   input {
     String sample_id
-    String? movie_name
+    String sample_prefix
     File bam
     File bam_index
 
@@ -24,17 +26,26 @@ task somalier_extract {
 
     set -euo pipefail
 
+    # extract sites with movie prefix to check sample swaps between movies
     somalier extract \
       --fasta=~{reference_fasta} \
       --sites=~{somalier_sites_vcf} \
-      --out-dir=extracted \
-      ~{"--sample-prefix=" + movie_name} \
-      ~{bam} 
+      --out-dir=extracted_movies \
+      --sample-prefix=~{sample_prefix} \
+      ~{bam}
+    
+    # extract sites again without movie prefix to check sample relatedness
+    somalier extract \
+      --fasta=~{reference_fasta} \
+      --sites=~{somalier_sites_vcf} \
+      --out-dir=extracted_samples \
+      ~{bam}
 
   >>>
 
   output {
-    File extracted_sites = "extracted/~{sample_id}.somalier"
+    File extracted_sites_per_movie = "extracted_movies/~{sample_id}.somalier"
+    File extracted_sites_per_sample = "extracted_samples/~{sample_id}.somalier"
   }
 
   runtime {
@@ -122,8 +133,10 @@ task somalier_relate_movies {
 task somalier_relate_samples {
 
   input {
-    String sample_id
+    String cohort_id
     Array[File] extracted_somalier_sites
+    Array[String] sample_ids
+    Array[String] coverages
 
     RuntimeAttributes runtime_attributes
   }
@@ -138,17 +151,26 @@ task somalier_relate_samples {
     # calculate relatedness among movies from extracted, genotype-like information
     somalier relate \
       --min-depth=4 \
-      --output-prefix=~{sample_id}.somalier \
+      --output-prefix=~{cohort_id}.somalier \
       ~{sep=" " extracted_somalier_sites}
 
-    # do stuff here to get list of samples that have max pairwise relatedness of 1/8
+    # find samples that have relatedness > 0.125
+    screen_related_samples.py \
+      ~{cohort_id}.somalier.pairs.tsv \
+      --max_relatedness 0.125 \
+      --sample_order ~{sep=" " sample_ids} \
+      --coverages ~{sep=" " coverages} \
+      --outfile ~{cohort_id}.related_samples_to_remove.tsv
+
+    
   >>>
 
   output {
-    File groups = "~{sample_id}.somalier.groups.tsv"
-    File html = "~{sample_id}.somalier.html"
-    File pairs = "~{sample_id}.somalier.pairs.tsv"
-    File samples = "~{sample_id}.somalier.samples.tsv"
+    File groups = "~{cohort_id}.somalier.groups.tsv"
+    File html = "~{cohort_id}.somalier.html"
+    File pairs = "~{cohort_id}.somalier.pairs.tsv"
+    File samples = "~{cohort_id}.somalier.samples.tsv"
+    Array[Array[String]] qc_related_keep_drop = read_tsv("~{cohort_id}.related_samples_to_remove.tsv")
   }
 
   runtime {
