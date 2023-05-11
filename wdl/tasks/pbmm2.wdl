@@ -1,8 +1,10 @@
 version 1.0
 
+# Align HiFi reads fastq or bam with pbmm2
+
 import "../structs.wdl"
 
-task pbmm2_align {
+task pbmm2 {
 
   input {
     File movie
@@ -16,31 +18,38 @@ task pbmm2_align {
     }
 
   String movie_name = sub(basename(movie), "\\..*", "")
-  String output_bam = "~{sample_id}.~{movie_name}.~{reference_name}.bam"
 
   Int threads = 24
-  Int mem_gb = ceil(threads * 1.5)
+  Int mem_gb = ceil(threads * 4)
 	Int disk_size = ceil((size(movie, "GB") + size(reference_fasta, "GB")) * 4 + 20)
   
   command {
     set -euo pipefail
     
     pbmm2 align \
+      -num-threads ~{threads} \
+      --sort-memory 4G \
       --sample ~{sample_id} \
       --log-level INFO \
       --preset CCS \
       --sort \
       --unmapped \
-      -c 0 -y 70 \
-      -j ~{threads} \
       ~{reference_fasta} \
       ~{movie} \
-      ~{output_bam}
+      ~{sample_id}.~{movie_name}.~{reference_name}.bam
+  
+    # movie stats
+		extract_read_length_and_qual.py \
+			~{movie} \
+		> ~{sample_id}.~{movie_name}.read_length_and_quality.tsv
     }
 
+
+
   output {
-    File bam = output_bam
-    File bam_index = "~{output_bam}.bai"
+    File aligned_bam = "~{sample_id}.~{movie_name}.~{reference_name}.bam"
+    File aligned_bam_index = "~{sample_id}.~{movie_name}.~{reference_name}.bam.bai"
+    File bam_stats = "~{sample_id}.~{movie_name}.read_length_and_quality.tsv"
   }
 
   runtime {
