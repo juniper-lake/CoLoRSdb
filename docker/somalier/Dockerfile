@@ -1,4 +1,4 @@
-FROM ubuntu:focal
+FROM python:3.9-buster
 
 LABEL org.opencontainers.image.authors="Juniper Lake <jlake@pacificbiosciences.com>"
 LABEL org.opencontainers.image.url="https://github.com/juniper-lake/CoLoRS"
@@ -30,3 +30,12 @@ RUN wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/
 RUN cd /opt/htslib-${HTSLIB_VERSION} \
 	&& make \
 	&& make install
+
+ARG LOGURU_VERSION
+RUN python3 -m pip install loguru==${LOGURU_VERSION}
+
+ARG PYTEST_VERSION
+RUN python3 -m pip install pytest==${PYTEST_VERSION}
+
+ARG PANDAS_VERSION
+RUN python3 -m pip install pandas==${PANDAS_VERSION}
