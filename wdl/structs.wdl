@@ -14,7 +14,7 @@ struct Cohort {
 	String cohort_id
 	Array[Sample] samples
 
-	Boolean aggregate_output
+	Boolean anonymize_output
 }
 
 struct ReferenceData {
@@ -37,5 +37,4 @@ struct RuntimeAttributes {
 
 	String zones
 	String queue_arn
-	String container_registry
-}
+	S
