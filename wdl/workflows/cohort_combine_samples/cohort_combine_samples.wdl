@@ -1,8 +1,12 @@
 version 1.0
 
-import "../../tasks/somalier.wdl" as Somalier
+import "../../tasks/glnexus.wdl" as GLnexus
+import "../../tasks/pbsv.wdl" as Pbsv
+import "../../tasks/sniffles.wdl" as Sniffles
+import "../../tasks/hiphase.wdl" as Hiphase
+import "../../tasks/utils.wdl" as Utils
 
-workflow cohort_analysis {
+workflow cohort_combine_samples {
   input {
     String cohort_id
 
