@@ -12,11 +12,12 @@ task glnexus {
 
 		File? regions_bed
 
+		Int mem_gb = 30
+
 		RuntimeAttributes runtime_attributes
 	}
 
 	Int threads = 24
-	Int mem_gb = 30
 	Int disk_size = ceil((size(gvcfs[0], "GB") * length(gvcfs)) * 2 + 100)
 
   String output_prefix =  "~{cohort_id}.~{reference_name}.deepvariant.glnexus"
