@@ -37,4 +37,5 @@ struct RuntimeAttributes {
 
 	String zones
 	String queue_arn
-	S
+	String container_registry
+}
