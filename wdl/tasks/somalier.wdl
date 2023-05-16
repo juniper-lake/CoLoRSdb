@@ -136,12 +136,12 @@ task somalier_relate_samples {
     String cohort_id
     Array[File] extracted_somalier_sites
     Array[String] sample_ids
-    Array[String] coverages
+    Array[Float] coverages
+    Float max_pairwise_relatedness
 
     RuntimeAttributes runtime_attributes
   }
 
-  Int n_files = length(extracted_somalier_sites)
   Int disk_size = 20 # might want to increase this
   Int threads = 1
 
@@ -157,7 +157,7 @@ task somalier_relate_samples {
     # find samples that have relatedness > 0.125
     screen_related_samples.py \
       ~{cohort_id}.somalier.pairs.tsv \
-      --max_relatedness 0.125 \
+      --max_relatedness ~{max_pairwise_relatedness} \
       --sample_order ~{sep=" " sample_ids} \
       --coverages ~{sep=" " coverages} \
       --outfile ~{cohort_id}.related_samples_to_remove.tsv
