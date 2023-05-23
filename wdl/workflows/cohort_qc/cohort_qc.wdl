@@ -135,7 +135,7 @@ task summarize_qc {
   }
   runtime {
     cpu: 1
-    memory: "2 GB"
+    memory: "1 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries
