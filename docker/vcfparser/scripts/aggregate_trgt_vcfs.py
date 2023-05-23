@@ -53,7 +53,7 @@ def parse_args(args):
         nargs="*",
         help="list of optionally gzipped TRGT VCF files to be aggregated and aonymized",
     )
-    parser.add_argument("cohort_prefix", help="sample name prefix for header line")
+    parser.add_argument("anonymize_prefix", help="sample name prefix for header line")
     parser.add_argument("--outfile", dest="outfile", help="output file name")
     parser.add_argument(
         "--loglevel",
