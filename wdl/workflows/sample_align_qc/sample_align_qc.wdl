@@ -52,7 +52,7 @@ workflow sample_align_qc {
   }
 
   # combine smrtcells stats
-  call Utils.combine_smrtcell_stats {
+  call Pbmm2.combine_smrtcell_stats {
     input:
       sample_id = sample.sample_id,
       read_length_and_quality_tsvs = pbmm2.bam_stats,
@@ -87,7 +87,6 @@ workflow sample_align_qc {
       aligned_bam_index = merged_bam.index,
       runtime_attributes = default_runtime_attributes
   }
-
 
   output {
     IndexData merged_aligned_bam = merged_bam
