@@ -3,8 +3,8 @@ version 1.0
 import "../backend_configuration/backend_configuration.wdl" as BackendConfiguration
 import "../sample_align_qc/sample_align_qc.wdl" as SampleAlignQC
 import "../cohort_qc/cohort_qc.wdl" as CohortQC
-# import "../sample_call_variants/sample_call_variants.wdl" as SampleCallVariants
-# import "../cohort_combine_samples/cohort_combine_samples.wdl" as CohortCombineSamples
+import "../sample_call_variants/sample_call_variants.wdl" as SampleCallVariants
+import "../cohort_combine_samples/cohort_combine_samples.wdl" as CohortCombineSamples
 
 workflow cohort_main {
   input {
@@ -73,22 +73,41 @@ workflow cohort_main {
 			default_runtime_attributes = default_runtime_attributes
 	}
 
-	# scatter (idx in range(length(cohort.samples))) {
-	# 	if (cohort_qc.qc_pass) {
-	# 		call SampleCallVariants.sample_call_variants {
-	# 			input:
+	scatter (idx in range(length(cohort.samples))) {
+		if (cohort_qc.qc_pass[idx]) {
 
-	# 		}
-	# 	}
-	# }
+			String qc_pass_sample_id = cohort.samples[idx].sample_id
+			String qc_pass_sex = sample_align_qc.sex[idx]
+			IndexData qc_pass_aligned_bam = sample_align_qc.merged_aligned_bam[idx]
+			
+			call SampleCallVariants.sample_call_variants {
+				input:
+					sample_id = qc_pass_sample_id,
+					aligned_bam = qc_pass_aligned_bam,
+					sex = qc_pass_sex,
+					reference = reference,
+					deepvariant_version = deepvariant_version,
+					default_runtime_attributes = default_runtime_attributes
+			}
+		}
+	}
 
-	# call CohortCombineSamples.cohort_combine_samples {
-	# 	input:
-
-	# }
+	call CohortCombineSamples.cohort_combine_samples {
+		input:
+			cohort_id = cohort.cohort_id,
+			anonymize_output = cohort.anonymize_output,
+			sample_ids = select_all(qc_pass_sample_id),
+			sexes = select_all(qc_pass_sex),
+			aligned_bams = select_all(qc_pass_aligned_bam),
+			svsigs = select_all(sample_call_variants.pbsv_svsigs),
+			gvcfs = select_all(sample_call_variants.deepvariant_gvcf),
+			snfs = select_all(sample_call_variants.sniffles_snf),
+			trgt_vcfs = select_all(sample_call_variants.trgt_vcf),
+			reference = reference,
+			default_runtime_attributes = default_runtime_attributes
+	}
 
 	output {
 
 	}
 }
-

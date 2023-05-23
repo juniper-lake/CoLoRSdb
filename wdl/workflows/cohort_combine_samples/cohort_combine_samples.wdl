@@ -1,21 +1,24 @@
 version 1.0
 
-import "../../tasks/glnexus.wdl" as GLnexus
+import "../../tasks/glnexus.wdl" as Glnexus
 import "../../tasks/pbsv.wdl" as Pbsv
 import "../../tasks/sniffles.wdl" as Sniffles
 import "../../tasks/hiphase.wdl" as Hiphase
+import "../../tasks/vcfparser.wdl" as VcfParser
 import "../../tasks/utils.wdl" as Utils
 
 workflow cohort_combine_samples {
   input {
     String cohort_id
+    Boolean anonymize_output
 
     Array[String] sample_ids
+    Array[String] sexes
     Array[IndexData] aligned_bams
     Array[Array[File]] svsigs
     Array[IndexData] gvcfs
     Array[File] snfs
-    Array[IndexData] trgt_vcfs
+    Array[File] trgt_vcfs
 
     ReferenceData reference
 
@@ -76,7 +79,7 @@ workflow cohort_combine_samples {
 		File aligned_bam_index = bam_object.index
 	}
 
-  if (!aggregate) {
+  if (!anonymize_output) {
     # phase pbsv and deepvariant vcfs
     call Hiphase.hiphase {
       input:
@@ -91,39 +94,67 @@ workflow cohort_combine_samples {
         reference_index = reference.fasta.index,
         runtime_attributes = default_runtime_attributes
     }
-
-    # zip and index pbsv structural variants
-    call Utils.index_vcf as index_phased_pbsv_vcf {
-      input:
-        gzipped_vcf = hiphase.pbsv_output_vcf,
-        runtime_attributes = default_runtime_attributes
-    }
-
-    call Utils.index_vcf as index_phased_deepvariant_vcf {
-      input:
-        gzipped_vcf = hiphase.deepvariant_output_vcf,
-        runtime_attributes = default_runtime_attributes
-    }
-
-    call Utils.zip_index_vcf as zip_index_sniffles_vcf {
-      input:
-        vcf = sniffles_call.vcf,
-        runtime_attributes = default_runtime_attributes
-    }
-
-   # combine trgt output in some way
   }
 
-  # if (aggregate) {
-  #   # randomize sniffles, pbsv, trgt, deepvariant
-  # }
+  # pbsv
+  call VcfParser.postprocess_joint_vcf as postprocess_pbsv_vcf {
+    input:
+      vcf = select_first([hiphase.pbsv_output_vcf, concat_vcfs.concatenated_vcf]),
+      cohort_id = cohort_id,
+      anonymize_output = anonymize_output,
+      sexes = sexes,
+      runtime_attributes = default_runtime_attributes
+  }
+
+  # deepvariant
+  call VcfParser.postprocess_joint_vcf as postprocess_deepvariant_vcf {
+    input:
+      vcf = select_first([hiphase.deepvariant_output_vcf, glnexus.vcf]),
+      cohort_id = cohort_id,
+      anonymize_output = anonymize_output,
+      sexes = sexes,
+      runtime_attributes = default_runtime_attributes
+  }
+
+  # sniffles
+  call VcfParser.postprocess_joint_vcf as postprocess_sniffles_vcf {
+    input:
+      vcf = sniffles_call.vcf,
+      cohort_id = cohort_id,
+      anonymize_output = anonymize_output,
+      sexes = sexes,
+      runtime_attributes = default_runtime_attributes
+  }
+
+  # trgt 
+  call VcfParser.merge_trgt_vcfs {
+    input:
+      trgt_vcfs = trgt_vcfs,
+      cohort_id = cohort_id,
+      reference_name = reference.name,
+      anonymize_output = anonymize_output,
+      runtime_attributes = default_runtime_attributes
+  }
 
   output {
-    IndexData cohort_deepvariant_vcf = { "data": select_first([index_phased_deepvariant_vcf.zipped_vcf]), "index": select_first([index_phased_deepvariant_vcf.zipped_vcf_index]) }
-    IndexData cohort_pbsv_vcf = { "data": select_first([index_phased_pbsv_vcf.zipped_vcf]), "index": select_first([index_phased_pbsv_vcf.zipped_vcf_index]) }
-    IndexData cohort_sniffles_vcf = { "data": select_first([zip_index_sniffles_vcf.zipped_vcf]), "index": select_first([zip_index_sniffles_vcf.zipped_vcf_index]) }
-    # trgt, combine in some way?
+    IndexData cohort_deepvariant_vcf = { 
+      "data": postprocess_deepvariant_vcf.postprocessed_vcf,
+      "index": postprocess_deepvariant_vcf.postprocessed_vcf_index
+      }
+    IndexData cohort_pbsv_vcf = { 
+      "data": postprocess_pbsv_vcf.postprocessed_vcf,
+      "index": postprocess_pbsv_vcf.postprocessed_vcf_index 
+      }
+    IndexData cohort_sniffles_vcf = { 
+      "data": postprocess_sniffles_vcf.postprocessed_vcf,
+      "index": postprocess_sniffles_vcf.postprocessed_vcf_index
+      }
+    IndexData cohort_trgt_vcf = { 
+      "data": merge_trgt_vcfs.merged_trgt_vcf,
+      "index": merge_trgt_vcfs.merge_trgt_vcf_index
+      }
     Array[File] cohort_pbsv_log = pbsv_call.log # for testing memory usage
+    # File variant_summary
 
     # Aggregate = false
     File? hiphase_stats = hiphase.stats
@@ -132,3 +163,6 @@ workflow cohort_combine_samples {
   }
     
 }
+
+
+
