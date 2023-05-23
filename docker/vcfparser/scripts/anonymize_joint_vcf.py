@@ -40,7 +40,7 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def anonymize_join_vcf(
+def anonymize_joint_vcf(
     vcf: str,
     cohort_prefix: str,
     outfile: str = None,
@@ -48,9 +48,18 @@ def anonymize_join_vcf(
 ):
     """Parse VCF, change sample names, update metadata, and print shuffled VCF"""
 
+    # check if outfile exists
     if outfile:
+        if not outfile.endswith(".vcf"):
+            raise ValueError("Output file should end in .vcf")
         if os.path.isfile(outfile):
             raise IOError(f"Output file {outfile} already exists.")
+        else:
+            logger.info(f"Writing anonymized VCF to {outfile}")
+            file = open(outfile, "w")
+    else:
+        logger.info("No output file provided, printing to stdout")
+        file = sys.stdout
 
     vcf = VCFParser(vcf)
 
@@ -67,22 +76,12 @@ def anonymize_join_vcf(
     # add metadata line
     vcf.add_meta("commandline", meta_string)
 
-    if outfile:
-        logger.info(f"Writing anonymized VCF to {outfile}")
-        with open(outfile, mode="w", encoding="utf-8", errors="strict") as out:
-            # print metadata and header line
-            out.write(vcf.print_header())
+    # print header
+    print(vcf.print_header(), file=file)
 
-            # print each record with samples shuffled
-            for variant in vcf(shuffle_samples=True):
-                out.write(str(variant) + "\n")
-    else:
-        # print header
-        print(vcf.print_header())
-
-        # print each record with samples shuffled
-        for variant in vcf(shuffle_samples=True):
-            print(variant)
+    # print each record with samples shuffled
+    for variant in vcf(shuffle_samples=True):
+        print(variant, file=file)
 
     logger.success("Successfully terminated")
 
@@ -94,4 +93,4 @@ if __name__ == "__main__":
 
     logger.configure(handlers=[{"sink": sys.stderr, "level": args.loglevel}])
 
-    anonymize_join_vcf(args.vcf, args.cohort_prefix, args.outfile, " ".join(sys.argv))
+    anonymize_joint_vcf(args.vcf, args.cohort_prefix, args.outfile, " ".join(sys.argv))
