@@ -153,7 +153,7 @@ workflow cohort_combine_samples {
       "data": merge_trgt_vcfs.merged_trgt_vcf,
       "index": merge_trgt_vcfs.merge_trgt_vcf_index
       }
-    Array[File] cohort_pbsv_log = pbsv_call.log # for testing memory usage
+    Array[File] pbsv_call_logs = pbsv_call.log # for testing memory usage
     # File variant_summary
 
     # Aggregate = false
