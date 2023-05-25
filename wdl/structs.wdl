@@ -10,6 +10,13 @@ struct Sample {
 	Array[File] movies
 }
 
+struct AlignedSample {
+	String sample_id
+	IndexData aligned_bam
+	String sex
+	Boolean qc_pass
+}
+
 struct Cohort {
 	String cohort_id
 	Array[Sample] samples
