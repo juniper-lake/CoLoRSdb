@@ -1,7 +1,6 @@
 FROM python:3.9-buster
 
 LABEL org.opencontainers.image.authors="Juniper Lake <jlake@pacificbiosciences.com>"
-LABEL org.opencontainers.image.url="https://github.com/juniper-lake/CoLoRS"
 
 ARG IMAGE_NAME
 ENV IMAGE_NAME "${IMAGE_NAME}"
