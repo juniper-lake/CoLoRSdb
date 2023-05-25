@@ -10,16 +10,25 @@ struct Sample {
 	Array[File] movies
 }
 
+struct AlignedSample {
+	String sample_id
+	IndexData aligned_bam
+	String sex
+	Boolean qc_pass
+}
+
 struct Cohort {
 	String cohort_id
 	Array[Sample] samples
 
-	Boolean aggregate_output
+	Boolean anonymize_output
 }
 
 struct ReferenceData {
 	String name
 	IndexData fasta
+
+	Array[String] chromosomes
 
 	File tandem_repeat_bed
 	File trgt_tandem_repeat_bed

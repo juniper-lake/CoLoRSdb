@@ -36,14 +36,10 @@ task trgt {
 			--output ~{bam_basename}.trgt.sorted.vcf.gz \
 			~{bam_basename}.trgt.vcf.gz
 
-		bcftools index \
-			--tbi \
-			~{bam_basename}.trgt.sorted.vcf.gz
 	>>>
 
 	output {
 		File repeat_vcf = "~{bam_basename}.trgt.sorted.vcf.gz"
-		File repeat_vcf_index = "~{bam_basename}.trgt.sorted.vcf.gz.tbi"
 	}
 
 	runtime {
