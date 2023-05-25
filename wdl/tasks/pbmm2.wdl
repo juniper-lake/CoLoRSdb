@@ -8,6 +8,7 @@ task pbmm2 {
 
   input {
     File movie
+    String out_prefix
     String sample_id
     
     String reference_name
@@ -16,8 +17,6 @@ task pbmm2 {
     
     RuntimeAttributes runtime_attributes
     }
-
-  String movie_name = sub(basename(movie), "\\..*", "")
 
   Int threads = 24
   Int mem_gb = ceil(threads * 4)
@@ -36,20 +35,20 @@ task pbmm2 {
       --unmapped \
       ~{reference_fasta} \
       ~{movie} \
-      ~{sample_id}.~{movie_name}.~{reference_name}.bam
+      ~{out_prefix}.~{reference_name}.bam
   
     # movie stats
 		extract_read_length_and_qual.py \
 			~{movie} \
-		> ~{sample_id}.~{movie_name}.read_length_and_quality.tsv
+		> ~{out_prefix}.read_length_and_quality.tsv
     }
 
 
 
   output {
-    File aligned_bam = "~{sample_id}.~{movie_name}.~{reference_name}.bam"
-    File aligned_bam_index = "~{sample_id}.~{movie_name}.~{reference_name}.bam.bai"
-    File bam_stats = "~{sample_id}.~{movie_name}.read_length_and_quality.tsv"
+    File aligned_bam = "~{out_prefix}.~{reference_name}.bam"
+    File aligned_bam_index = "~{out_prefix}.~{reference_name}.bam.bai"
+    File bam_stats = "~{out_prefix}.read_length_and_quality.tsv"
   }
 
   runtime {
