@@ -227,6 +227,7 @@ task deepvariant_postprocess_variants {
 		done < ~{write_lines(nonvariant_site_tfrecord_tars)}
 
 		/opt/deepvariant/bin/postprocess_variants \
+			--vcf_stats_report=false \
 			--ref ~{reference} \
 			--infile ~{tfrecord} \
 			--outfile ~{sample_id}.~{reference_name}.deepvariant.vcf.gz \
