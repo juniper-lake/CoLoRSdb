@@ -55,22 +55,24 @@ workflow sample_call_variants {
   }
 
   # genotype tandem repeats with trgt
-  call Trgt.trgt {
-    input:
-      sex = sex,
-      bam = aligned_bam.data,
-      bam_index = aligned_bam.index,
-      reference_fasta = reference.fasta.data,
-      reference_index = reference.fasta.index,
-      tandem_repeat_bed = reference.trgt_tandem_repeat_bed,
-      runtime_attributes = default_runtime_attributes
+  if (defined(reference.trgt_tandem_repeat_bed)) {
+    call Trgt.trgt {
+      input:
+        sex = sex,
+        bam = aligned_bam.data,
+        bam_index = aligned_bam.index,
+        reference_fasta = reference.fasta.data,
+        reference_index = reference.fasta.index,
+        tandem_repeat_bed = reference.trgt_tandem_repeat_bed,
+        runtime_attributes = default_runtime_attributes
+    }
   }
 
   output {
     File sniffles_snf = sniffles_discover.snf
     Array[File] pbsv_svsigs = pbsv_discover.svsig
     IndexData deepvariant_gvcf = deepvariant.gvcf
-    File trgt_vcf = trgt.repeat_vcf
+    File? trgt_vcf = trgt.repeat_vcf
 
     # Variant metrics
     # numbers of passing variants by types (hom/het)
