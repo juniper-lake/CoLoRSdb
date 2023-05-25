@@ -114,7 +114,7 @@ workflow cohort_main {
 		Array[IndexData] cohort_deepvariant_vcfs = cohort_combine_samples.cohort_deepvariant_vcf
 		Array[IndexData] cohort_pbsv_vcfs = cohort_combine_samples.cohort_pbsv_vcf
 		Array[IndexData] cohort_sniffles_vcfs = cohort_combine_samples.cohort_sniffles_vcf
-		Array[IndexData] cohort_trgt_vcfs = cohort_combine_samples.cohort_trgt_vcf
+		Array[IndexData?] cohort_trgt_vcfs = cohort_combine_samples.cohort_trgt_vcf
 
 		Array[File] pbsv_call_logs = flatten(cohort_combine_samples.pbsv_call_logs)
 		Array[File?] hiphase_stats = cohort_combine_samples.hiphase_stats

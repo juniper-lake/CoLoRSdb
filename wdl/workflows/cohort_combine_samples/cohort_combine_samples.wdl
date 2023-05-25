@@ -18,7 +18,7 @@ workflow cohort_combine_samples {
     Array[Array[File]] svsigs
     Array[IndexData] gvcfs
     Array[File] snfs
-    Array[File] trgt_vcfs
+    Array[File?] trgt_vcfs
 
     ReferenceData reference
 
@@ -127,14 +127,17 @@ workflow cohort_combine_samples {
   }
 
   # trgt 
-  call VcfParser.merge_trgt_vcfs {
-    input:
-      trgt_vcfs = trgt_vcfs,
-      cohort_id = cohort_id,
-      reference_name = reference.name,
-      anonymize_output = anonymize_output,
-      runtime_attributes = default_runtime_attributes
+  if (length(trgt_vcfs) > 0) {
+    call VcfParser.merge_trgt_vcfs {
+      input:
+        trgt_vcfs = select_all(trgt_vcfs),
+        cohort_id = cohort_id,
+        reference_name = reference.name,
+        anonymize_output = anonymize_output,
+        runtime_attributes = default_runtime_attributes
+    }
   }
+
 
   output {
     IndexData cohort_deepvariant_vcf = { 
@@ -149,9 +152,9 @@ workflow cohort_combine_samples {
       "data": postprocess_sniffles_vcf.postprocessed_vcf,
       "index": postprocess_sniffles_vcf.postprocessed_vcf_index
       }
-    IndexData cohort_trgt_vcf = { 
-      "data": merge_trgt_vcfs.merged_trgt_vcf,
-      "index": merge_trgt_vcfs.merge_trgt_vcf_index
+    IndexData? cohort_trgt_vcf = { 
+      "data": select_first([merge_trgt_vcfs.merged_trgt_vcf]),
+      "index": select_first([merge_trgt_vcfs.merge_trgt_vcf_index])
       }
     Array[File] pbsv_call_logs = pbsv_call.log # for testing memory usage
     # File variant_summary
