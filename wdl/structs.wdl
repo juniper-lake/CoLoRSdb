@@ -34,6 +34,8 @@ struct ReferenceData {
 	File trgt_tandem_repeat_bed
 
 	File somalier_sites_vcf
+	File? peddy_sites
+	File? peddy_bin
 }
 
 struct RuntimeAttributes {
