@@ -5,6 +5,7 @@ import "../../tasks/pbsv.wdl" as Pbsv
 import "../../tasks/sniffles.wdl" as Sniffles
 import "../../tasks/hiphase.wdl" as Hiphase
 import "../../tasks/vcfparser.wdl" as VcfParser
+import "../../tasks/peddy.wdl" as Peddy
 import "../../tasks/utils.wdl" as Utils
 
 workflow cohort_combine_samples {
@@ -30,7 +31,7 @@ workflow cohort_combine_samples {
 		File gvcf_index = gvcf_object.index
 	}
 
-  # joint call small variants with GLnexus
+  # glnexus (merge small variants)
   call Glnexus.glnexus {
     input:
       cohort_id = cohort_id,
@@ -40,7 +41,7 @@ workflow cohort_combine_samples {
       runtime_attributes = default_runtime_attributes
   }
 
-  # joint call structural variants with pbsv
+  # pbsv (joint call structural variants)
   scatter (idx in range(length(reference.chromosomes))) {
     call Pbsv.pbsv_call {
       input:
@@ -55,6 +56,7 @@ workflow cohort_combine_samples {
     }
   }
 
+  # concat pbsv chromosome vcfs
   call Utils.concat_vcfs {
     input:
       vcfs = pbsv_call.vcf,
@@ -62,7 +64,7 @@ workflow cohort_combine_samples {
       runtime_attributes = default_runtime_attributes
   }
 
-  # joint call structural variants with sniffles
+  # sniffles (joint call structural variants)
   call Sniffles.sniffles_call {
     input:
       sample_id = cohort_id,
@@ -80,7 +82,7 @@ workflow cohort_combine_samples {
 	}
 
   if (!anonymize_output) {
-    # phase pbsv and deepvariant vcfs
+    # hiphase (phase pbsv and deepvariant vcfs)
     call Hiphase.hiphase {
       input:
         cohort_id = cohort_id,
@@ -96,7 +98,7 @@ workflow cohort_combine_samples {
     }
   }
 
-  # pbsv
+  # postprocess pbsv
   call VcfParser.postprocess_joint_vcf as postprocess_pbsv_vcf {
     input:
       vcf = select_first([hiphase.pbsv_output_vcf, concat_vcfs.concatenated_vcf]),
@@ -106,7 +108,7 @@ workflow cohort_combine_samples {
       runtime_attributes = default_runtime_attributes
   }
 
-  # deepvariant
+  # postprocess deepvariant
   call VcfParser.postprocess_joint_vcf as postprocess_deepvariant_vcf {
     input:
       vcf = select_first([hiphase.deepvariant_output_vcf, glnexus.vcf]),
@@ -116,7 +118,7 @@ workflow cohort_combine_samples {
       runtime_attributes = default_runtime_attributes
   }
 
-  # sniffles
+  # postprocess sniffles
   call VcfParser.postprocess_joint_vcf as postprocess_sniffles_vcf {
     input:
       vcf = sniffles_call.vcf,
@@ -126,7 +128,7 @@ workflow cohort_combine_samples {
       runtime_attributes = default_runtime_attributes
   }
 
-  # trgt 
+  # merge and postprocess trgt 
   if (length(trgt_vcfs) > 0) {
     call VcfParser.merge_trgt_vcfs {
       input:
@@ -138,6 +140,19 @@ workflow cohort_combine_samples {
     }
   }
 
+  # peddy (estimate ancestry)
+  if (defined(reference.peddy_sites) && defined(reference.peddy_bin)) {
+    call Peddy.peddy {
+      input:
+        cohort_id = cohort_id,
+        sample_ids = sample_ids,
+        vcf = glnexus.vcf,
+        vcf_index = glnexus.vcf_index,
+        peddy_sites = select_first([reference.peddy_sites]),
+        peddy_bin = select_first([reference.peddy_bin]),
+        runtime_attributes = default_runtime_attributes
+    }
+  }
 
   output {
     IndexData cohort_deepvariant_vcf = { 
@@ -159,6 +174,15 @@ workflow cohort_combine_samples {
     Array[File] pbsv_call_logs = pbsv_call.log # for testing memory usage
     # File variant_summary
 
+    # peddy output
+    File? peddy_het_check = peddy.het_check
+    File? peddy_sex_check = peddy.sex_check
+    File? peddy_ped_check = peddy.ped_check
+    File? peddy_background_pca = peddy.background_pca
+    File? peddy_html = peddy.html
+    File? peddy_ped = peddy.ped
+    File? peddy_vs_html = peddy.vs_html
+
     # Aggregate = false
     File? hiphase_stats = hiphase.stats
     File? hiphase_blocks = hiphase.blocks
@@ -166,6 +190,3 @@ workflow cohort_combine_samples {
   }
     
 }
-
-
-
