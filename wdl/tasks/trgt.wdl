@@ -16,7 +16,7 @@ task trgt {
 		RuntimeAttributes runtime_attributes
 	}
 	
-	String karyotype = if sex == "MALE" then "XY" else "XX"
+	String karyotype = if sex == "male" then "XY" else "XX"
 	String bam_basename = basename(bam, ".bam")
 	Int threads = 4
 	Int disk_size = ceil((size(bam, "GB") + size(reference_fasta, "GB")) * 2 + 20)
