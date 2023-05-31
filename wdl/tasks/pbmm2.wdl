@@ -116,6 +116,6 @@ task combine_smrtcell_stats {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "datamash:1.1.0"
+    docker: "~{runtime_attributes.container_registry}/datamash:1.1.0"
   }  
 }

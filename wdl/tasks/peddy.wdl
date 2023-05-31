@@ -55,7 +55,7 @@ task peddy {
 
   runtime {
     cpu: threads
-    memory: "4 GB"
+    memory: "~{mem_gb} GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries
@@ -66,3 +66,5 @@ task peddy {
     docker: "~{runtime_attributes.container_registry}/peddy:0.4.8"
   }  
 }
+
+

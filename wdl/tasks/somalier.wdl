@@ -66,53 +66,39 @@ task somalier_relate_movies {
 
   input {
     String sample_id
-    Array[File] extracted_somalier_sites
+    Array[File] extracted_sites_per_movie
 
     RuntimeAttributes runtime_attributes
   }
 
-  Int n_files = length(extracted_somalier_sites)
+  Int n_files = length(extracted_sites_per_movie)
   Int disk_size = 20
   Int threads = 1
 
   command<<<
     set -euo pipefail
 
-    # calculate relatedness among movies from extracted, genotype-like information
-    somalier relate \
-      --min-depth=4 \
-      --infer \
-      --output-prefix=~{sample_id}.somalier \
-      ~{sep=" " extracted_somalier_sites}
-    
     # get minimum pairwise relatedness (output 1 if there's only one movie)
     if [ ~{n_files} -eq 1 ]; then
       echo "1.0" > min_relatedness.txt
     else
+      # calculate relatedness among movies
+      somalier relate \
+        --min-depth=4 \
+        --infer \
+        --output-prefix=~{sample_id}.somalier \
+        ~{sep=" " extracted_sites_per_movie}
       awk 'NR>1 {print $3}' ~{sample_id}.somalier.pairs.tsv | sort -n | head -1 > min_relatedness.txt
     fi
 
-    # get inferred sex
-    LOW=$(awk 'NR>1 {print $5}' ~{sample_id}.somalier.samples.tsv | sort -n | head -1)
-    HIGH=$(awk 'NR>1 {print $5}' ~{sample_id}.somalier.samples.tsv | sort -n | tail -1)
-    if [ $HIGH -eq $LOW ]; then
-      if [ $HIGH -eq 1 ]; then
-        echo "MALE" > inferred_sex.txt
-      elif [ $HIGH -eq 2 ]; then
-        echo "FEMALE" > inferred_sex.txt
-      fi
-    else
-      echo "UNKNOWN" > inferred_sex.txt
-    fi
   >>>
 
   output {
-    File groups = "~{sample_id}.somalier.groups.tsv"
-    File html = "~{sample_id}.somalier.html"
-    File pairs = "~{sample_id}.somalier.pairs.tsv"
-    File samples = "~{sample_id}.somalier.samples.tsv"
+    File? groups = "~{sample_id}.somalier.groups.tsv"
+    File? html = "~{sample_id}.somalier.html"
+    File? pairs = "~{sample_id}.somalier.pairs.tsv"
+    File? samples = "~{sample_id}.somalier.samples.tsv"
     Float min_relatedness = read_float("min_relatedness.txt")
-    String inferred_sex = read_string("inferred_sex.txt")
   }
 
   runtime {
@@ -134,7 +120,7 @@ task somalier_relate_samples {
 
   input {
     String cohort_id
-    Array[File] extracted_somalier_sites
+    Array[File] extracted_sites_per_sample
     Array[String] sample_ids
     Array[Float] coverages
     Float max_pairwise_relatedness
@@ -148,19 +134,32 @@ task somalier_relate_samples {
   command<<<
     set -euo pipefail
 
-    # calculate relatedness among movies from extracted, genotype-like information
+    # calculate relatedness among samples
     somalier relate \
       --min-depth=4 \
       --output-prefix=~{cohort_id}.somalier \
-      ~{sep=" " extracted_somalier_sites}
+      ~{sep=" " extracted_sites_per_sample}
 
-    # find samples that have relatedness > 0.125
+    # find samples that have relatedness > max_pairwise_relatedness
     screen_related_samples.py \
       ~{cohort_id}.somalier.pairs.tsv \
       --max_relatedness ~{max_pairwise_relatedness} \
       --sample_order ~{sep=" " sample_ids} \
       --coverages ~{sep=" " coverages} \
       --outfile ~{cohort_id}.related_samples_to_remove.tsv
+    
+    for $SAMPLE_ID in ~{sep=" " sample_ids}; do
+      grep -w ^${SAMPLE_ID} ~{cohort_id}.related_samples_to_remove.tsv | cut -f2 >> keep_drop.txt
+      grep -w ^${SAMPLE_ID} ~{cohort_id}.related_samples_to_remove.tsv | cut -f3 >> n_relations.txt
+      SEX=$(grep -w ^${SAMPLE_ID} ~{cohort_id}.somalier.samples.tsv | cut -f5)
+      if [ $SEX -eq 1 ]; then
+        echo "male" > inferred_sex.txt
+      elif [ $SEX -eq 2 ]; then
+        echo "female" > inferred_sex.txt
+      else
+        echo "unknown" > inferred_sex.txt
+      fi
+    done
 
     
   >>>
@@ -170,7 +169,9 @@ task somalier_relate_samples {
     File html = "~{cohort_id}.somalier.html"
     File pairs = "~{cohort_id}.somalier.pairs.tsv"
     File samples = "~{cohort_id}.somalier.samples.tsv"
-    Array[Array[String]] qc_related_keep_drop = read_tsv("~{cohort_id}.related_samples_to_remove.tsv")
+    Array[String] qc_related_keep_drop = read_lines("keep_drop.txt")
+    Array[String] n_relations = read_lines("n_relations.txt")
+    Array[String] inferred_sexes = read_lines("inferred_sex.txt")
   }
 
   runtime {
