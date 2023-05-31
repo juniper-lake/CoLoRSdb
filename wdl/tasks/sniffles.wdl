@@ -11,7 +11,7 @@ task sniffles_discover {
 
     File reference_fasta
     File reference_index
-    File tr_bed
+    File tandem_repeat_bed
 
     RuntimeAttributes runtime_attributes
   }
@@ -29,7 +29,7 @@ task sniffles_discover {
     sniffles \
       --threads ~{threads} \
       --sample-id ~{sample_id} \
-      --reference ~{reference_fasta} ~{"--tandem-repeats " + tr_bed} \
+      --reference ~{reference_fasta} ~{"--tandem-repeats " + tandem_repeat_bed} \
       --minsvlen 20 \
       --snf ~{output_filename} \
       --input ~{bam}

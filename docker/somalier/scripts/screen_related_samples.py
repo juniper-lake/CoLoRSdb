@@ -47,6 +47,7 @@ class NoRelation(object):
         ]
         self.samples = sample_order
         self.max_relatedness = max_relatedness
+        self.n_relations = []
         self.pairs = None
         self.dropped_samples = []
         self.coverages = coverages
@@ -125,7 +126,15 @@ class NoRelation(object):
                 f"All samples are below the relatedness threshold of \
                     {self.max_relatedness}, so no samples will be removed."
             )
+            self.n_relations = [0 for _ in self.samples]
         else:
+            for sample in self.samples:
+                relatedness_values = self.pairs.loc[
+                    (self.pairs["#sample_a"] == sample) | (self.pairs["sample_b"] == sample), 
+                    "relatedness"
+                    ]
+                n_relations = sum(_ > self.max_relatedness for _ in relatedness_values)
+                self.n_relations.append(n_relations)
             logger.info(f"Removing samples with relatedness > {self.max_relatedness}")
             self.remove_related_samples()
         self.sorted_keep_drop = [
@@ -283,11 +292,12 @@ def flag_related_samples(
         coverages=coverages,
     )
 
+    columns = "\n".join(f"{sample}\t{keep_drop}\t{n_relations}" 
+                        for sample, keep_drop, n_relations 
+                        in zip(cohort.samples, cohort.sorted_keep_drop, cohort.n_relations)
+                        )
     # print sample names in provided order
-    print("\t".join(cohort.samples), file=file)
-
-    # print keep/drop for each sample
-    print("\t".join(cohort.sorted_keep_drop), file=file)
+    print(columns, file=file)
 
     logger.success("Successfully terminated")
 

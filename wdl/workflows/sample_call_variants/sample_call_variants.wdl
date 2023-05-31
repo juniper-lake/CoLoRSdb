@@ -39,7 +39,7 @@ workflow sample_call_variants {
       bam_index = aligned_bam.index,
       reference_fasta = reference.fasta.data,
       reference_index = reference.fasta.index,
-      tr_bed = reference.tandem_repeat_bed,
+      tandem_repeat_bed = reference.tandem_repeat_bed,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -63,7 +63,7 @@ workflow sample_call_variants {
         bam_index = aligned_bam.index,
         reference_fasta = reference.fasta.data,
         reference_index = reference.fasta.index,
-        tandem_repeat_bed = reference.trgt_tandem_repeat_bed,
+        tandem_repeat_bed = select_first([reference.trgt_tandem_repeat_bed]),
         runtime_attributes = default_runtime_attributes
     }
   }

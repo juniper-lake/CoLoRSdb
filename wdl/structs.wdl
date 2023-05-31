@@ -10,13 +10,6 @@ struct Sample {
 	Array[File] movies
 }
 
-struct AlignedSample {
-	String sample_id
-	IndexData aligned_bam
-	String sex
-	Boolean qc_pass
-}
-
 struct Cohort {
 	String cohort_id
 	Array[Sample] samples
@@ -31,7 +24,7 @@ struct ReferenceData {
 	Array[String] chromosomes
 
 	File tandem_repeat_bed
-	File trgt_tandem_repeat_bed
+	File? trgt_tandem_repeat_bed
 
 	File somalier_sites_vcf
 	File? peddy_sites
