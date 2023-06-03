@@ -96,13 +96,18 @@ workflow cohort_combine_samples {
     }
   }
 
+  scatter (idx in range(length(sample_ids))) {
+    String sample_plus_sex = "~{sample_ids[idx]}+~{sexes[idx]}}"
+  }
+
   # pbsv
   call VcfParser.postprocess_joint_vcf as postprocess_pbsv_vcf {
     input:
       vcf = select_first([hiphase.pbsv_output_vcf, concat_vcfs.concatenated_vcf]),
       cohort_id = cohort_id,
       anonymize_output = anonymize_output,
-      sexes = sexes,
+      sample_plus_sexes = sample_plus_sex,
+      haploid_bed = reference.haploid_bed,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -112,7 +117,8 @@ workflow cohort_combine_samples {
       vcf = select_first([hiphase.deepvariant_output_vcf, glnexus.vcf]),
       cohort_id = cohort_id,
       anonymize_output = anonymize_output,
-      sexes = sexes,
+      sample_plus_sexes = sample_plus_sex,
+      haploid_bed = reference.haploid_bed,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -122,7 +128,8 @@ workflow cohort_combine_samples {
       vcf = sniffles_call.vcf,
       cohort_id = cohort_id,
       anonymize_output = anonymize_output,
-      sexes = sexes,
+      sample_plus_sexes = sample_plus_sex,
+      haploid_bed = reference.haploid_bed,
       runtime_attributes = default_runtime_attributes
   }
 

@@ -7,7 +7,8 @@ task postprocess_joint_vcf {
     File vcf
     String cohort_id
     Boolean anonymize_output
-    Array[String] sexes
+    Array[String] sample_plus_sexes
+    File haploid_bed
     
     RuntimeAttributes runtime_attributes
   }
@@ -23,9 +24,10 @@ task postprocess_joint_vcf {
   command {
     set -euo pipefail
 
-    fix_hemizygous_ploidy.py \
-      --anonymize_prefix ~{anonymize_prefix} \
-      --sexes ~{sep=" " sexes} \
+    postprocess_joint_vcf.py \
+      ~{anonymize_prefix} \
+      --hap_bed ~{haploid_bed} \
+      --sample_sexes ~{sep=" " sample_plus_sexes} \
       --outfile ~{outfile}
     
     bgzip \
