@@ -11,6 +11,7 @@ import os
 from codecs import open, getreader
 import re
 import random
+import math
 
 
 class VCFParser(object):
@@ -34,7 +35,6 @@ class VCFParser(object):
         ]
         self.samples = []
         self.sample_pattern = re.compile("^[a-zA-Z0-9_]+$")
-        self.shuffle_samples = False
 
         logger.info(f"Reading vcf from file {infile}")
         file_name, file_extension = os.path.splitext(infile)
@@ -109,8 +109,6 @@ class VCFParser(object):
     def __iter__(self):
         """Iterate over the variants in the VCF file."""
         # We need to treat the first case as an exception because we read it in the init
-        if self.shuffle_samples:
-            logger.info("Sample data is being shuffled.")
 
         if self.beginning:
             if self.next_line:
@@ -123,7 +121,7 @@ class VCFParser(object):
                                       {self.next_line}"
                     )
 
-                variant = VariantRecord(variant_line, self.shuffle_samples)
+                variant = VariantRecord(variant_line)
 
                 yield variant
 
@@ -138,20 +136,15 @@ class VCFParser(object):
                 if len(self.header) != len(variant_line):
                     raise SyntaxError(f"One of the variant lines is malformed: {line}")
 
-                variant = VariantRecord(variant_line, self.shuffle_samples)
+                variant = VariantRecord(variant_line)
 
                 yield variant
-
-    def __call__(self, shuffle_samples: bool):
-        """Return an iterator over variants in VCF, optionally shuffling samples."""
-        self.shuffle_samples = shuffle_samples
-        return self
 
 
 class VariantRecord(object):
     """Object representing a single variant record in a VCF file."""
 
-    def __init__(self, variant_line, shuffle_samples=False):
+    def __init__(self, variant_line):
         super().__init__()
         logger.debug("Creating VariantRecords object")
         self.line = variant_line
@@ -164,17 +157,8 @@ class VariantRecord(object):
         self.info = variant_line[7]
         self.format = variant_line[8]
         self.variant_data = variant_line[:9]
+        self.original_sample_data = variant_line[9:]
         self.sample_data = variant_line[9:]
-        self.genotypes = [
-            map(int, sample.split(":")[0].split("/")) for sample in self.sample_data
-        ]
-        self.full_genotypes = [
-            [self.alleles[hap] for hap in genotype] for genotype in self.genotypes
-        ]
-
-        if shuffle_samples:
-            self.sample_data = random.sample(self.sample_data, len(self.sample_data))
-            self.line = self.variant_data + self.sample_data
 
     def __str__(self):
         """Return a string representation of the variant record."""
@@ -184,17 +168,135 @@ class VariantRecord(object):
         """Update genotype and haplotypes based on provided alleles."""
         alleles = [ref] + alts
         # get new genotype for each sample
-        self.genotypes = [
-            [alleles.index(hap) for hap in full_genotype]
-            for full_genotype in self.full_genotypes
+        genotypes = [
+            map(int, sample.split(":")[0].split("/")) for sample in self.sample_data
         ]
+        full_genotypes = [
+            [self.alleles[hap] for hap in genotype] for genotype in genotypes
+        ]
+        new_genotypes = [
+            [alleles.index(hap) for hap in full_genotype]
+            for full_genotype in full_genotypes
+        ]
+
         # use new genotype to update sample data string for each sample
         self.sample_data = [
             ":".join(
-                ["/".join(map(str, self.genotypes[i]))]
+                ["/".join(map(str, new_genotypes[i]))]
                 + self.sample_data[i].split(":")[1:]
             )
-            for i in range(len(self.genotypes))
+            for i in range(len(genotypes))
         ]
         # update full variant line with new sample data
+        self.line = self.variant_data + self.sample_data
+
+    def shuffle_samples(self):
+        """Shuffle sample data."""
+        self.sample_data = random.sample(self.sample_data, len(self.sample_data))
+        self.line = self.variant_data + self.sample_data
+
+    def in_regions(self, chrom: str, pos: int, regions: list[tuple[str, int, int]]):
+        """Check if variant is in any of the provided regions."""
+        for region in regions:
+            (region_chrom, region_start, region_end) = region
+            if chrom == region_chrom and (region_start < pos <= region_end):
+                return True
+        return False
+
+    def convert_to_haploid(self, sample_idx: int):
+        """Convert diploid genotype to haploid."""
+        format = self.format.split(":")
+        sample = self.sample_data[sample_idx].split(":")
+        # deepvariant
+        sample_dict = dict(zip(format, sample))
+        if "PL" in format:
+            logger.debug(f"Using PL to fix ploidy at {self.chrom}:{self.pos}")
+            pls = sample_dict["PL"].split(",")
+            if (len(pls) == 2) or (len(sample_dict["GT"].split("/")) == 1):
+                logger.debug("Genotype is already haploid.")
+            if len(pls) != 3:
+                raise ValueError(
+                    f"PL field does not have 3 values as expected \
+                                    for {sample} at {self.chrom}:{self.pos}"
+                )
+            else:
+                # update PL, GQ, and GT
+                num_alleles = len(self.alts) + 1
+                un_normalized_probs = [10 ** (pl / -10) for pl in pls]
+                homozygous_un_normalized_probs = []
+                for i in range(num_alleles):
+                    for j in range(i, num_alleles):
+                        if i == j:
+                            pl_index = int(i * (i + 1) / 2 + j)
+                            homozygous_un_normalized_probs.append(
+                                un_normalized_probs[pl_index]
+                            )
+                haploid_probs = tuple(
+                    [
+                        p / sum(homozygous_un_normalized_probs)
+                        for p in homozygous_un_normalized_probs
+                    ]
+                )
+                haploid_pls = [int(-10 * math.log10(p)) for p in haploid_probs]
+                min_pl = min(haploid_pls)
+                haploid_pls = [pl - min_pl for pl in haploid_pls]
+                gq = 10000
+                for i, pl in enumerate(haploid_pls):
+                    if pl == 0:
+                        # maintain a no call
+                        gt = "." if sample_dict["GT"] == "./." else i
+                    elif pl < gq:
+                        gq = pl
+                sample_dict |= {"PL": ",".join(haploid_pls), "GT": gt, "GQ": gq}
+        # pbsv
+        elif "AD" in format:
+            logger.debug(f"Using AD to fix ploidy at {self.chrom}:{self.pos}")
+            ads = [int(ad) for ad in sample_dict["AD"].split(",")]
+            max_ad = max(ads)
+            # genotype unknown if AD is tied, otherwise highest AD
+            if ads.count(max_ad) != 1:
+                gt = "."
+            else:
+                gt = ads.index(max_ad)
+                sample_dict |= {"GT": str(gt)}
+        # sniffles
+        elif ("DR" in format) and ("DV" in format):
+            logger.debug(f"Using DR+DV to fix ploidy at {self.chrom}:{self.pos}")
+            ads = [int(sample_dict["DR"]), int(sample_dict["DV"])]
+            if ads.count(max_ad) == 1:
+                gt = "."
+            else:
+                gt = ads.index(max_ad)
+                sample_dict |= {"GT": gt}
+        else:
+            raise ValueError(f"Format {format} is not supported for fixing ploidy.")
+        new_sample = [sample_dict[key] for key in format]
+        return new_sample
+
+    def fix_ploidy(self, sexes: list[str], regions: list[tuple[str, int, int]]):
+        """Fix ploidy for hemizygous loci."""
+        if (n_sexes := len(sexes)) != (n_samples := len(self.sample_data)):
+            raise ValueError(
+                f"Number of sexes {n_sexes} does not match number of \
+                             samples {n_samples}"
+            )
+
+        if self.original_sample_data != self.sample_data:
+            raise ValueError(
+                "Sample data has already been modified. Fix \
+                             ploidy before shuffling samples or updating genotypes."
+            )
+
+        if self.in_regions(self.chrom, int(self.pos), regions):
+            for sample_idx in range(len(self.sample_data)):
+                sex = sexes[sample_idx].lower()
+                if sex in ["m", "male", "xy"]:
+                    new_sample = self.convert_to_haploid(sample_idx)
+                    self.sample_data[sample_idx] = ":".join(new_sample)
+                elif sex not in ["f", "female", "xx"]:
+                    raise ValueError(
+                        f"The specified sex '{sex}' is not valid. Please \
+                                     use m, male, or xy for males and f, female, \
+                                     or xx for females."
+                    )
         self.line = self.variant_data + self.sample_data
