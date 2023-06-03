@@ -4,6 +4,7 @@ import "../../tasks/sniffles.wdl" as Sniffles
 import "../../tasks/pbsv.wdl" as Pbsv
 import "../deepvariant/deepvariant.wdl" as DeepVariant
 import "../../tasks/trgt.wdl" as Trgt
+import "../../tasks/hificnv.wdl" as Hificnv
 
 workflow sample_call_variants {
 
@@ -68,11 +69,34 @@ workflow sample_call_variants {
     }
   }
 
+  if (defined(reference.hificnv_exclude_bed) 
+    && defined(reference.hificnv_expected_bed_male) 
+    && defined(reference.hificnv_expected_bed_female)) {
+      call Hificnv.hificnv {
+        input:
+          sample_id = sample_id,
+          sex = sex,
+          bam = aligned_bam.data,
+          bam_index = aligned_bam.index,
+          small_variant_vcf = deepvariant.vcf.data,
+          small_variant_vcf_index = deepvariant.vcf.index,
+          reference_name = reference.name,
+          reference = reference.fasta.data,
+          reference_index = reference.fasta.index,
+          exclude_bed = select_first([reference.hificnv_exclude_bed]).data,
+          exclude_bed_index = select_first([reference.hificnv_exclude_bed]).index,
+          expected_bed_male = select_first([reference.hificnv_expected_bed_male]),
+          expected_bed_female = select_first([reference.hificnv_expected_bed_female]),
+          runtime_attributes = default_runtime_attributes
+      }
+    }
+
   output {
     File sniffles_snf = sniffles_discover.snf
     Array[File] pbsv_svsigs = pbsv_discover.svsig
     IndexData deepvariant_gvcf = deepvariant.gvcf
     File? trgt_vcf = trgt.repeat_vcf
+    File? hificnv_vcf = hificnv.cnv_vcf
 
     # Variant metrics
     # numbers of passing variants by types (hom/het)

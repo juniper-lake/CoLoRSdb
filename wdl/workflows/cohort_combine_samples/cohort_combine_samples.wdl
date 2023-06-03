@@ -4,6 +4,7 @@ import "../../tasks/glnexus.wdl" as Glnexus
 import "../../tasks/pbsv.wdl" as Pbsv
 import "../../tasks/sniffles.wdl" as Sniffles
 import "../../tasks/hiphase.wdl" as Hiphase
+import "../../tasks/peddy.wdl" as Peddy
 import "../../tasks/vcfparser.wdl" as VcfParser
 import "../../tasks/utils.wdl" as Utils
 
@@ -19,6 +20,7 @@ workflow cohort_combine_samples {
     Array[IndexData] gvcfs
     Array[File] snfs
     Array[File?] trgt_vcfs
+    Array[File?] hificnv_vcfs
 
     ReferenceData reference
 
@@ -38,6 +40,20 @@ workflow cohort_combine_samples {
       gvcf_indexes = gvcf_index,
       reference_name = reference.name,
       runtime_attributes = default_runtime_attributes
+  }
+
+  # ancestry with peddy
+  if (defined(reference.peddy_sites) && defined(reference.peddy_bin)) {
+    call Peddy.peddy {
+      input:
+        cohort_id = cohort_id,
+        sample_ids = sample_ids,
+        vcf = glnexus.vcf,
+        vcf_index = glnexus.vcf_index,
+        peddy_sites = select_first([reference.peddy_sites]),
+        peddy_bin = select_first([reference.peddy_bin]),
+        runtime_attributes = default_runtime_attributes
+    }
   }
 
   # joint call structural variants with pbsv
@@ -145,8 +161,25 @@ workflow cohort_combine_samples {
     }
 
     IndexData cohort_trgt = { 
-      "data": merge_trgt_vcfs.merged_trgt_vcf,
-      "index": merge_trgt_vcfs.merge_trgt_vcf_index
+      "data": merge_trgt_vcfs.merged_vcf,
+      "index": merge_trgt_vcfs.merged_vcf_index
+      }
+  }
+  
+  # hificnv
+  if (length(hificnv_vcfs) > 0) {
+    call VcfParser.merge_hificnv_vcfs {
+      input:
+        hificnv_vcfs = select_all(hificnv_vcfs),
+        cohort_id = cohort_id,
+        reference_name = reference.name,
+        anonymize_output = anonymize_output,
+        runtime_attributes = default_runtime_attributes
+    }
+    
+    IndexData cohort_hificnv = { 
+      "data": merge_hificnv_vcfs.merged_vcf,
+      "index": merge_hificnv_vcfs.merged_vcf_index
       }
 
   }
@@ -166,8 +199,17 @@ workflow cohort_combine_samples {
       "index": postprocess_sniffles_vcf.postprocessed_vcf_index
       }
     IndexData? cohort_trgt_vcf = cohort_trgt
+    IndexData? cohort_hificnv_vcf = cohort_hificnv
     Array[File] pbsv_call_logs = pbsv_call.log # for testing memory usage
     # File variant_summary
+
+    File? peddy_het_check = peddy.het_check
+    File? peddy_sex_check = peddy.sex_check
+    File? peddy_ped_check = peddy.ped_check
+    File? peddy_background_pca = peddy.background_pca
+    File? peddy_html = peddy.html
+    File? peddy_ped = peddy.ped
+    File? peddy_vs_html = peddy.vs_html
 
     # Aggregate = false
     File? hiphase_stats = hiphase.stats

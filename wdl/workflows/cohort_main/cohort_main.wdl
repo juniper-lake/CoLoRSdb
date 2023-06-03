@@ -87,10 +87,21 @@ workflow cohort_main {
 
 	output {
 		File qc_summary_tsv = cohort_align_qc.qc_summary_tsv
+		File pairwise_relatedness_tsv = cohort_align_qc.pairwise_relatedness
+
 		IndexData cohort_deepvariant_vcf = cohort_combine_samples.cohort_deepvariant_vcf
 		IndexData cohort_pbsv_vcf = cohort_combine_samples.cohort_pbsv_vcf
 		IndexData cohort_sniffles_vcf = cohort_combine_samples.cohort_sniffles_vcf
 		IndexData? cohort_trgt_vcf = cohort_combine_samples.cohort_trgt_vcf
+		IndexData? cohort_hificnv_vcf = cohort_combine_samples.cohort_hificnv_vcf
+
+		File? peddy_het_check = cohort_combine_samples.peddy_het_check
+    File? peddy_sex_check = cohort_combine_samples.peddy_sex_check
+    File? peddy_ped_check = cohort_combine_samples.peddy_ped_check
+    File? peddy_background_pca = cohort_combine_samples.peddy_background_pca
+    File? peddy_html = cohort_combine_samples.peddy_html
+    File? peddy_ped = cohort_combine_samples.peddy_ped
+    File? peddy_vs_html = cohort_combine_samples.peddy_vs_html
 
 		Array[File] pbsv_call_logs = cohort_combine_samples.pbsv_call_logs
 		File? hiphase_stats = cohort_combine_samples.hiphase_stats

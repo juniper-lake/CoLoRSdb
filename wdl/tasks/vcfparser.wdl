@@ -95,8 +95,62 @@ task merge_trgt_vcfs {
   }
 
 	output {
-		File merged_trgt_vcf = "~{outfile}.gz"
-		File merge_trgt_vcf_index = "~{outfile}.gz.tbi"
+		File merged_vcf = "~{outfile}.gz"
+		File merged_vcf_index = "~{outfile}.gz.tbi"
+	}
+
+	runtime {
+		cpu: threads
+		memory: "4 GB"
+		disk: "~{disk_size} GB"
+    disks: "local-disk ~{disk_size} HDD"
+		preemptible: runtime_attributes.preemptible_tries
+		maxRetries: runtime_attributes.max_retries
+		awsBatchRetryAttempts: runtime_attributes.max_retries
+		queueArn: runtime_attributes.queue_arn
+		zones: runtime_attributes.zones
+		docker: "~{runtime_attributes.container_registry}/vcfparser:0.1.0"
+	}
+}
+
+
+task merge_hificnv_vcfs {
+  input {
+    Array[File] hificnv_vcfs
+    String cohort_id
+    String reference_name
+    Boolean anonymize_output
+
+    RuntimeAttributes runtime_attributes
+  }
+
+  String anonymize_prefix = if (anonymize_output) then "--anonymize_prefix " + cohort_id else ""
+  String outfile = if (anonymize_output) then "~{cohort_id}.~{reference_name}.hificnv.anonymized.vcf" else "~{cohort_id}.~{reference_name}.hificnv.vcf"
+  Int threads = 4
+	Int disk_size = ceil((size(hificnv_vcfs, "GB")) * 2.5 + 20)
+
+  command {
+    set -euo pipefail
+
+    merge_hificnv_vcfs.py \
+      --vcfs ~{sep=" " hificnv_vcfs} \
+      --outfile ~{outfile} \
+      ~{anonymize_prefix}
+
+    bgzip \
+			--threads ~{threads} \
+			~{outfile} -c \
+			> ~{outfile}.gz
+
+    tabix \
+			--preset vcf \
+			~{outfile}.gz   
+    
+  }
+
+	output {
+		File merged_vcf = "~{outfile}.gz"
+		File merged_vcf_index = "~{outfile}.gz.tbi"
 	}
 
 	runtime {

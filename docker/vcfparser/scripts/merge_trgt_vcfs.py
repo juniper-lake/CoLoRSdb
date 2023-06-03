@@ -51,7 +51,7 @@ def parse_args(args):
     parser.add_argument(
         "vcfs",
         nargs="*",
-        help="list of optionally gzipped TRGT VCF files to be aggregated and aonymized",
+        help="list of optionally gzipped TRGT VCF files to be aggregated and anonymized",
     )
     parser.add_argument(
         "--anonymize_prefix",
@@ -75,11 +75,11 @@ def parse_args(args):
     return parser.parse_args()
 
 
-def aggregate_trgt_vcfs(
+def merge_trgt_vcfs(
     vcf_files: list,
     anonymize_prefix: str = None,
     outfile: str = None,
-    meta_string: str = "aggregate_trgt_vcfs.py",
+    meta_string: str = "merge_trgt_vcfs.py",
 ):
     """Combine multiple TRGT VCFs into single VCF and optionally anonymize samples"""
 
@@ -203,6 +203,6 @@ if __name__ == "__main__":
 
     logger.configure(handlers=[{"sink": sys.stderr, "level": args.loglevel}])
 
-    aggregate_trgt_vcfs(
+    merge_trgt_vcfs(
         args.vcfs, args.anonymize_prefix, args.outfile, " ".join(sys.argv)
     )
