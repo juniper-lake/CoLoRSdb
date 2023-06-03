@@ -78,7 +78,7 @@ task merge_trgt_vcfs {
   command {
     set -euo pipefail
 
-    aggregate_trgt_vcfs.py \
+    merge_trgt_vcfs.py \
       --vcfs ~{sep=" " trgt_vcfs} \
       --outfile ~{outfile} \
       ~{anonymize_prefix}
