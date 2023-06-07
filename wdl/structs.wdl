@@ -26,7 +26,12 @@ struct ReferenceData {
 	File haploid_bed
 
 	File tandem_repeat_bed
+
 	File? trgt_tandem_repeat_bed
+
+	IndexData? hificnv_exclude_bed
+	File? hificnv_expected_bed_male
+	File? hificnv_expected_bed_female
 
 	File somalier_sites_vcf
 	File? peddy_sites

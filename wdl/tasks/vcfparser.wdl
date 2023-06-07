@@ -7,8 +7,8 @@ task postprocess_joint_vcf {
     File vcf
     String cohort_id
     Boolean anonymize_output
-    Array[String] sample_plus_sexes
-    File haploid_bed
+    Array[String]? sample_plus_sexes
+    File? haploid_bed
     
     RuntimeAttributes runtime_attributes
   }
@@ -16,6 +16,7 @@ task postprocess_joint_vcf {
   String vcf_basename = basename(basename(vcf, ".gz"), ".vcf")
   String anonymize_prefix = if (anonymize_output) then "--anonymize_prefix ~{cohort_id}" else ""
   String outfile = if (anonymize_output) then "~{vcf_basename}.anonymized.vcf" else "~{vcf_basename}.vcf"
+  String just_zip_index = if (anonymize_output) || defined(haploid_bed) || defined(sample_plus_sexes) then "false" else "true"
   
   Int threads = 4
 	Int disk_size = ceil((size(vcf, "GB")) * 3.5 + 20) 
@@ -24,16 +25,28 @@ task postprocess_joint_vcf {
   command {
     set -euo pipefail
 
-    postprocess_joint_vcf.py \
-      ~{anonymize_prefix} \
-      --hap_bed ~{haploid_bed} \
-      --sample_sexes ~{sep=" " sample_plus_sexes} \
-      --outfile ~{outfile}
-    
-    bgzip \
-			--threads ~{threads} \
-			~{outfile} -c \
-			> ~{outfile}.gz
+    # if you don't need to anonymize output or fix ploidy, then just zip and index
+    if [[ ~{just_zip_index} == "true" ]]; then
+      # if already zipped, just index
+      if [[ $file =~ \.gz$ ]]; then
+        mv ~{vcf} ~{outfile}.gz
+      else
+        bgzip -c \
+			    --threads ~{threads} \
+			    ~{vcf} \
+			    > ~{outfile}.gz
+      fi
+    else
+      postprocess_joint_vcf.py \
+        ~{anonymize_prefix} \
+        --hap_bed ~{haploid_bed} \
+        --sample_sexes ~{sep=" " sample_plus_sexes} \
+        --outfile ~{outfile}
+
+      bgzip -c \
+        --threads ~{threads} \
+        ~{outfile}
+    fi
 
     tabix \
 			--preset vcf \
@@ -78,7 +91,7 @@ task merge_trgt_vcfs {
   command {
     set -euo pipefail
 
-    aggregate_trgt_vcfs.py \
+    merge_trgt_vcfs.py \
       --vcfs ~{sep=" " trgt_vcfs} \
       --outfile ~{outfile} \
       ~{anonymize_prefix}
@@ -95,8 +108,8 @@ task merge_trgt_vcfs {
   }
 
 	output {
-		File merged_trgt_vcf = "~{outfile}.gz"
-		File merge_trgt_vcf_index = "~{outfile}.gz.tbi"
+		File merged_vcf = "~{outfile}.gz"
+		File merged_vcf_index = "~{outfile}.gz.tbi"
 	}
 
 	runtime {
