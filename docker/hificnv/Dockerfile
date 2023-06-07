@@ -12,9 +12,9 @@ RUN apt-get -qq update \
 		wget \
 		build-essential \
 		zlib1g-dev \
-        liblzma-dev \
-        libbz2-dev \
-        libcurl4-openssl-dev \
+    liblzma-dev \
+    libbz2-dev \
+    libcurl4-openssl-dev \
 	&& rm -rf /var/lib/apt/lists/*
 
 ARG HIFICNV_VERSION
@@ -30,4 +30,12 @@ RUN wget https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSI
 RUN cd /opt/bcftools-${BCFTOOLS_VERSION} \
 	&& make \
 	&& make install
-  
+
+ARG HTSLIB_VERSION
+RUN wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 \
+	&& tar -jxvf htslib-${HTSLIB_VERSION}.tar.bz2 --directory /opt \
+	&& rm htslib-${HTSLIB_VERSION}.tar.bz2
+RUN cd /opt/htslib-${HTSLIB_VERSION} \
+	&& make \
+	&& make install
+	

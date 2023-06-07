@@ -3,9 +3,10 @@ version 1.0
 import "../../tasks/glnexus.wdl" as Glnexus
 import "../../tasks/pbsv.wdl" as Pbsv
 import "../../tasks/sniffles.wdl" as Sniffles
+import "../../tasks/hificnv.wdl" as Hificnv
 import "../../tasks/hiphase.wdl" as Hiphase
 import "../../tasks/peddy.wdl" as Peddy
-import "../../tasks/vcfparser.wdl" as VcfParser
+import "../../tasks/vcfparser.wdl" as Vcfparser
 import "../../tasks/utils.wdl" as Utils
 
 workflow cohort_combine_samples {
@@ -117,7 +118,7 @@ workflow cohort_combine_samples {
   }
 
   # pbsv
-  call VcfParser.postprocess_joint_vcf as postprocess_pbsv_vcf {
+  call Vcfparser.postprocess_joint_vcf as postprocess_pbsv_vcf {
     input:
       vcf = select_first([hiphase.pbsv_output_vcf, concat_vcfs.concatenated_vcf]),
       cohort_id = cohort_id,
@@ -128,7 +129,7 @@ workflow cohort_combine_samples {
   }
 
   # deepvariant
-  call VcfParser.postprocess_joint_vcf as postprocess_deepvariant_vcf {
+  call Vcfparser.postprocess_joint_vcf as postprocess_deepvariant_vcf {
     input:
       vcf = select_first([hiphase.deepvariant_output_vcf, glnexus.vcf]),
       cohort_id = cohort_id,
@@ -139,7 +140,7 @@ workflow cohort_combine_samples {
   }
 
   # sniffles
-  call VcfParser.postprocess_joint_vcf as postprocess_sniffles_vcf {
+  call Vcfparser.postprocess_joint_vcf as postprocess_sniffles_vcf {
     input:
       vcf = sniffles_call.vcf,
       cohort_id = cohort_id,
@@ -151,7 +152,7 @@ workflow cohort_combine_samples {
 
   # trgt 
   if (length(trgt_vcfs) > 0) {
-    call VcfParser.merge_trgt_vcfs {
+    call Vcfparser.merge_trgt_vcfs {
       input:
         trgt_vcfs = select_all(trgt_vcfs),
         cohort_id = cohort_id,
@@ -168,20 +169,26 @@ workflow cohort_combine_samples {
   
   # hificnv
   if (length(hificnv_vcfs) > 0) {
-    call VcfParser.merge_hificnv_vcfs {
+    call Hificnv.merge_hificnv_vcfs {
       input:
-        hificnv_vcfs = select_all(hificnv_vcfs),
+        cnv_vcfs = select_all(hificnv_vcfs),
         cohort_id = cohort_id,
         reference_name = reference.name,
+        runtime_attributes = default_runtime_attributes
+    }
+
+    call Vcfparser.postprocess_joint_vcf as postprocess_hificnv_vcf {
+      input:
+        vcf = merge_hificnv_vcfs.merged_cnv_vcf,
+        cohort_id = cohort_id,
         anonymize_output = anonymize_output,
         runtime_attributes = default_runtime_attributes
     }
-    
-    IndexData cohort_hificnv = { 
-      "data": merge_hificnv_vcfs.merged_vcf,
-      "index": merge_hificnv_vcfs.merged_vcf_index
-      }
 
+    IndexData cohort_hificnv = {
+      "data": postprocess_hificnv_vcf.postprocessed_vcf,
+      "index": postprocess_hificnv_vcf.postprocessed_vcf_index
+    }
   }
 
 
