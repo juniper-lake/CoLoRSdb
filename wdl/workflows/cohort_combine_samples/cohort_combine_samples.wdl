@@ -7,7 +7,8 @@ import "../../tasks/hificnv.wdl" as Hificnv
 import "../../tasks/hiphase.wdl" as Hiphase
 import "../../tasks/peddy.wdl" as Peddy
 import "../../tasks/vcfparser.wdl" as Vcfparser
-import "../../tasks/utils.wdl" as Utils
+import "../../tasks/bcftools.wdl" as Bcftools
+
 
 workflow cohort_combine_samples {
   input {
@@ -43,6 +44,16 @@ workflow cohort_combine_samples {
       runtime_attributes = default_runtime_attributes
   }
 
+  # get stats from deepvariant vcf
+  call Bcftools.small_variant_stats {
+    input:
+      vcf = glnexus.vcf,
+      sample_ids = sample_ids,
+      reference = reference.fasta.data,
+      non_diploid_regions = reference.non_diploid_regions,
+      runtime_attributes = default_runtime_attributes
+  }
+
   # ancestry with peddy
   if (defined(reference.peddy_sites) && defined(reference.peddy_bin)) {
     call Peddy.peddy {
@@ -72,10 +83,18 @@ workflow cohort_combine_samples {
     }
   }
 
-  call Utils.concat_vcfs {
+  call Pbsv.concat_vcfs {
     input:
       vcfs = pbsv_call.vcf,
       output_vcf_name = "~{cohort_id}.~{reference.name}.pbsv.vcf",
+      runtime_attributes = default_runtime_attributes
+  }
+
+  call Bcftools.structural_variant_stats as pbsv_stats {
+    input:
+      vcf = concat_vcfs.concatenated_vcf,
+      sample_ids = sample_ids,
+      non_diploid_regions = reference.non_diploid_regions,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -90,6 +109,15 @@ workflow cohort_combine_samples {
       tr_bed = reference.tandem_repeat_bed,
       runtime_attributes = default_runtime_attributes
   }
+
+  call Bcftools.structural_variant_stats as sniffles_stats {
+    input:
+      vcf = sniffles_call.vcf,
+      sample_ids = sample_ids,
+      non_diploid_regions = reference.non_diploid_regions,
+      runtime_attributes = default_runtime_attributes
+  }
+
 
   scatter (bam_object in aligned_bams) {
 		File aligned_bam = bam_object.data
@@ -124,7 +152,7 @@ workflow cohort_combine_samples {
       cohort_id = cohort_id,
       anonymize_output = anonymize_output,
       sample_plus_sexes = sample_plus_sex,
-      haploid_bed = reference.haploid_bed,
+      non_diploid_regions = reference.non_diploid_regions,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -135,7 +163,7 @@ workflow cohort_combine_samples {
       cohort_id = cohort_id,
       anonymize_output = anonymize_output,
       sample_plus_sexes = sample_plus_sex,
-      haploid_bed = reference.haploid_bed,
+      non_diploid_regions = reference.non_diploid_regions,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -146,7 +174,7 @@ workflow cohort_combine_samples {
       cohort_id = cohort_id,
       anonymize_output = anonymize_output,
       sample_plus_sexes = sample_plus_sex,
-      haploid_bed = reference.haploid_bed,
+      non_diploid_regions = reference.non_diploid_regions,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -193,6 +221,7 @@ workflow cohort_combine_samples {
 
 
   output {
+    # VCFs
     IndexData cohort_deepvariant_vcf = { 
       "data": postprocess_deepvariant_vcf.postprocessed_vcf,
       "index": postprocess_deepvariant_vcf.postprocessed_vcf_index
@@ -207,9 +236,16 @@ workflow cohort_combine_samples {
       }
     IndexData? cohort_trgt_vcf = cohort_trgt
     IndexData? cohort_hificnv_vcf = cohort_hificnv
-    Array[File] pbsv_call_logs = pbsv_call.log # for testing memory usage
-    # File variant_summary
 
+    # Logs
+    Array[File] pbsv_call_logs = pbsv_call.log # for testing memory usage
+    
+    # VCF stats
+    File cohort_deepvariant_vcf_stats = small_variant_stats.stats
+    File cohort_pbsv_vcf_stats = pbsv_stats.stats
+    File cohort_sniffles_vcf_stats = sniffles_stats.stats
+    
+    # Ancestry when peddy is run
     File? peddy_het_check = peddy.het_check
     File? peddy_sex_check = peddy.sex_check
     File? peddy_ped_check = peddy.ped_check
@@ -218,7 +254,7 @@ workflow cohort_combine_samples {
     File? peddy_ped = peddy.ped
     File? peddy_vs_html = peddy.vs_html
 
-    # Aggregate = false
+    # Phasing when data is not anonymized
     File? hiphase_stats = hiphase.stats
     File? hiphase_blocks = hiphase.blocks
     File? hiphase_summary = hiphase.summary
