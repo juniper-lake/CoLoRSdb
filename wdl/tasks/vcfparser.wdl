@@ -8,7 +8,7 @@ task postprocess_joint_vcf {
     String cohort_id
     Boolean anonymize_output
     Array[String]? sample_plus_sexes
-    File? haploid_bed
+    File? non_diploid_regions
     
     RuntimeAttributes runtime_attributes
   }
@@ -16,10 +16,10 @@ task postprocess_joint_vcf {
   String vcf_basename = basename(basename(vcf, ".gz"), ".vcf")
   String anonymize_prefix = if (anonymize_output) then "--anonymize_prefix ~{cohort_id}" else ""
   String outfile = if (anonymize_output) then "~{vcf_basename}.anonymized.vcf" else "~{vcf_basename}.vcf"
-  String just_zip_index = if (anonymize_output) || defined(haploid_bed) || defined(sample_plus_sexes) then "false" else "true"
+  String just_zip_index = if (anonymize_output) || defined(non_diploid_regions) || defined(sample_plus_sexes) then "false" else "true"
   
   Int threads = 4
-	Int disk_size = ceil((size(vcf, "GB")) * 3.5 + 20) 
+  Int disk_size = ceil((size(vcf, "GB")) * 3.5 + 20) 
 
 
   command {
@@ -32,16 +32,17 @@ task postprocess_joint_vcf {
         mv ~{vcf} ~{outfile}.gz
       else
         bgzip -c \
-			    --threads ~{threads} \
-			    ~{vcf} \
-			    > ~{outfile}.gz
+          --threads ~{threads} \
+          ~{vcf} \
+          > ~{outfile}.gz
       fi
     else
       postprocess_joint_vcf.py \
         ~{anonymize_prefix} \
-        --hap_bed ~{haploid_bed} \
+        --non_diploid_regions ~{non_diploid_regions} \
         --sample_sexes ~{sep=" " sample_plus_sexes} \
-        --outfile ~{outfile}
+        --outfile ~{outfile} \
+        ~{vcf}
 
       bgzip -c \
         --threads ~{threads} \
@@ -49,8 +50,8 @@ task postprocess_joint_vcf {
     fi
 
     tabix \
-			--preset vcf \
-			~{outfile}.gz   
+      --preset vcf \
+      ~{outfile}.gz   
   }
 
   output {
@@ -58,18 +59,18 @@ task postprocess_joint_vcf {
     File postprocessed_vcf_index = "~{outfile}.gz.tbi"
   }
 
-	runtime {
-		cpu: threads
-		memory: "4 GB"
-		disk: "~{disk_size} GB"
+  runtime {
+    cpu: threads
+    memory: "4 GB"
+    disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
-		preemptible: runtime_attributes.preemptible_tries
-		maxRetries: runtime_attributes.max_retries
-		awsBatchRetryAttempts: runtime_attributes.max_retries
-		queueArn: runtime_attributes.queue_arn
-		zones: runtime_attributes.zones
-		docker: "~{runtime_attributes.container_registry}/vcfparser:0.1.0"
-	}
+    preemptible: runtime_attributes.preemptible_tries
+    maxRetries: runtime_attributes.max_retries
+    awsBatchRetryAttempts: runtime_attributes.max_retries
+    queueArn: runtime_attributes.queue_arn
+    zones: runtime_attributes.zones
+    docker: "~{runtime_attributes.container_registry}/vcfparser:0.1.0"
+  }
 
 }
 
@@ -86,7 +87,7 @@ task merge_trgt_vcfs {
   String anonymize_prefix = if (anonymize_output) then "--anonymize_prefix " + cohort_id else ""
   String outfile = if (anonymize_output) then "~{cohort_id}.~{reference_name}.trgt.anonymized.vcf" else "~{cohort_id}.~{reference_name}.trgt.vcf"
   Int threads = 4
-	Int disk_size = ceil((size(trgt_vcfs, "GB")) * 3.5 + 20)
+  Int disk_size = ceil((size(trgt_vcfs, "GB")) * 3.5 + 20)
 
   command {
     set -euo pipefail
@@ -97,31 +98,31 @@ task merge_trgt_vcfs {
       ~{anonymize_prefix}
 
     bgzip \
-			--threads ~{threads} \
-			~{outfile} -c \
-			> ~{outfile}.gz
+      --threads ~{threads} \
+      ~{outfile} -c \
+      > ~{outfile}.gz
 
     tabix \
-			--preset vcf \
-			~{outfile}.gz   
+      --preset vcf \
+      ~{outfile}.gz   
     
   }
 
-	output {
-		File merged_vcf = "~{outfile}.gz"
-		File merged_vcf_index = "~{outfile}.gz.tbi"
-	}
+  output {
+    File merged_vcf = "~{outfile}.gz"
+    File merged_vcf_index = "~{outfile}.gz.tbi"
+  }
 
-	runtime {
-		cpu: threads
-		memory: "4 GB"
-		disk: "~{disk_size} GB"
+  runtime {
+    cpu: threads
+    memory: "4 GB"
+    disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
-		preemptible: runtime_attributes.preemptible_tries
-		maxRetries: runtime_attributes.max_retries
-		awsBatchRetryAttempts: runtime_attributes.max_retries
-		queueArn: runtime_attributes.queue_arn
-		zones: runtime_attributes.zones
-		docker: "~{runtime_attributes.container_registry}/vcfparser:0.1.0"
-	}
+    preemptible: runtime_attributes.preemptible_tries
+    maxRetries: runtime_attributes.max_retries
+    awsBatchRetryAttempts: runtime_attributes.max_retries
+    queueArn: runtime_attributes.queue_arn
+    zones: runtime_attributes.zones
+    docker: "~{runtime_attributes.container_registry}/vcfparser:0.1.0"
+  }
 }

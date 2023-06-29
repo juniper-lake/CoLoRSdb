@@ -23,7 +23,7 @@ struct ReferenceData {
 
 	Array[String] chromosomes
 	
-	File haploid_bed
+	File non_diploid_regions
 
 	File tandem_repeat_bed
 
