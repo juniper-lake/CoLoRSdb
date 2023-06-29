@@ -26,7 +26,6 @@ task hificnv {
 		RuntimeAttributes runtime_attributes
 	}
 
-	Boolean sex_defined = defined(sex)
 	File expected_bed = if sex == "male" then expected_bed_male else expected_bed_female
 
 	Int threads = 8

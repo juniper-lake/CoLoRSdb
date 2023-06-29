@@ -97,10 +97,5 @@ workflow sample_call_variants {
     IndexData deepvariant_gvcf = deepvariant.gvcf
     File? trgt_vcf = trgt.repeat_vcf
     File? hificnv_vcf = hificnv.cnv_vcf
-
-    # Variant metrics
-    # numbers of passing variants by types (hom/het)
-    # het/hom ratio by type? 
-    # transitions/transversions 
   }
 }

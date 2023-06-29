@@ -2,7 +2,6 @@ version 1.0
 
 import "../../tasks/pbmm2.wdl" as Pbmm2
 import "../../tasks/somalier.wdl" as Somalier
-import "../../tasks/utils.wdl" as Utils
 import "../../tasks/mosdepth.wdl" as Mosdepth
 
 workflow cohort_align_qc {
@@ -75,7 +74,7 @@ workflow cohort_align_qc {
     Boolean pass_swap = if somalier_relate_movies.min_relatedness >= min_movie_relatedness_qc then true else false
 
     # merge aligned bams
-    call Utils.merge_bams {
+    call Pbmm2.merge_bams {
       input:
         bams = pbmm2.aligned_bam,
         output_bam_name = "~{sample.sample_id}.~{reference.name}.bam",
