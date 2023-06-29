@@ -28,10 +28,11 @@ def parse_args(args):
         help="sample name prefix for header, triggers anonymization",
     )
     parser.add_argument(
-        "--hap_bed",
-        dest="hap_bed",
+        "--non_diploid_regions",
+        dest="non_diploid_regions_file",
         type=str,
-        help="BED file with haploid regions, required for fixing ploidy",
+        help="TSV file with haploid regions in 1-based closed [start, end] coordinates,\
+            columns include chrom, start, end, sex, ploidy, required for fixing ploidy",
     )
     parser.add_argument(
         "--sample_sexes",
@@ -61,13 +62,50 @@ def parse_args(args):
 def postprocess_joint_vcf(
     vcf: str,
     anonymize_prefix: str = None,
-    hap_bed: str = None,
+    non_diploid_regions_file: str = None,
     sexes: list = None,
     outfile: str = None,
     meta_string: str = "anonymize_joint_vcf.py",
 ):
     """Parse VCF, change sample names, update metadata, and print shuffled VCF"""
 
+    # check if hap regions file exists
+    if non_diploid_regions_file:
+        if not os.path.isfile(non_diploid_regions_file):
+            raise IOError(f"File {non_diploid_regions_file} does not exist.")
+        non_diploid_regions = []
+        logger.info(f"Reading haploid regions from {non_diploid_regions_file}")
+        with open(non_diploid_regions_file) as file:
+            while line := file.readline():
+                if line.startswith("#"):
+                    continue
+                line_list = line.rstrip().split()
+                if len(line_list) != 5:
+                    raise IOError(f"File {non_diploid_regions_file} with haploid regions is \
+                                  not in the correct format.")
+                else:
+                    try:
+                        non_diploid_regions.append(
+                            (line_list[0], int(line_list[1]), int(line_list[2]), 
+                             line_list[3], int(line_list[4]))
+                        )
+                        logger.debug(
+                            f"Added region \
+                                {line_list[0]}:{line_list[1]}-{line_list[2], line_list[3], line_list[4]}"
+                        )
+                    except ValueError:
+                        raise IOError(
+                            f"File {non_diploid_regions_file} with haploid regions is not in\
+                                the correct format."
+                        )
+            if not non_diploid_regions:
+                raise IOError(f"File {non_diploid_regions_file} is empty.")
+        if not sexes:
+            raise IOError(
+                "File of haploid regions was provided but no \
+                          sample sexes were specified."
+            )
+        
     # check if outfile exists
     if outfile:
         if not outfile.endswith(".vcf"):
@@ -80,47 +118,13 @@ def postprocess_joint_vcf(
     else:
         logger.info("No output file provided, printing to stdout")
         file = sys.stdout
-
-    # check if bed file exists
-    if hap_bed:
-        if not os.path.isfile(hap_bed):
-            raise IOError(f"BED file {hap_bed} does not exist.")
-        hap_regions = []
-        logger.info(f"Reading haploid regions from {hap_bed}")
-        with open(hap_bed) as file:
-            while line := file.readline():
-                if line.startswith("#"):
-                    continue
-                line_list = line.rstrip().split("\t")
-                if len(line_list) != 3:
-                    raise IOError(f"BED file {hap_bed} is not in the correct format.")
-                else:
-                    try:
-                        hap_regions.append(
-                            (line_list[0], int(line_list[1]), int(line_list[2]))
-                        )
-                        logger.debug(
-                            f"Added haploid region \
-                                {line_list[0]}:{line_list[1]}-{line_list[2]}"
-                        )
-                    except ValueError:
-                        raise IOError(
-                            f"BED file {hap_bed} is not in the correct format."
-                        )
-            if not hap_regions:
-                raise IOError(f"BED file {hap_bed} is empty.")
-        if not sexes:
-            raise IOError(
-                "BED file of haploid regions was provided but no \
-                          sample sexes were specified."
-            )
-
+        
     vcf = VCFParser(vcf)
 
     if sexes:
-        if not hap_bed:
+        if not non_diploid_regions:
             raise IOError(
-                "Sample sexes were specified but no BED file of haploid \
+                "Sample sexes were specified but no file of haploid \
                           regions was provided."
             )
         sexes_dict = dict(s.split("+") for s in sexes)
@@ -141,12 +145,14 @@ def postprocess_joint_vcf(
     vcf.add_meta("commandline", meta_string)
 
     # print header
-    print(vcf.print_header(), file=file)
+    print(vcf.print_metadata(), file=file)
 
     # print each record with samples shuffled
     for variant in vcf:
-        if hap_regions and sexes:
-            variant.fix_ploidy(sexes=sexes_sorted, regions=hap_regions)
+        if non_diploid_regions and sexes:
+            variant.fix_ploidy(sexes=sexes_sorted, 
+                               non_diploid_regions=non_diploid_regions
+                               )
         if anonymize_prefix:
             variant.shuffle_samples()
         print(variant, file=file)
@@ -164,7 +170,7 @@ if __name__ == "__main__":
     postprocess_joint_vcf(
         args.vcf,
         args.anonymize_prefix,
-        args.hap_bed,
+        args.non_diploid_regions_file,
         args.sexes,
         args.outfile,
         " ".join(sys.argv),

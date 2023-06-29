@@ -162,6 +162,7 @@ class VariantRecord(object):
 
     def __str__(self):
         """Return a string representation of the variant record."""
+
         return "\t".join(self.line)
 
     def update_genotypes(self, ref: str, alts: list):
@@ -195,32 +196,54 @@ class VariantRecord(object):
         self.sample_data = random.sample(self.sample_data, len(self.sample_data))
         self.line = self.variant_data + self.sample_data
 
-    def in_regions(self, chrom: str, pos: int, regions: list[tuple[str, int, int]]):
+    def check_ploidy(self, chrom: str, pos: int, 
+                        regions: list[tuple[str, int, int, str, int]]
+                        ):
         """Check if variant is in any of the provided regions."""
+        male = ["male", "m", "xy"]
+        female = ["female", "f", "xx"]
+        valid_sex = male + female
+        ploidy_dict = {}
         for region in regions:
-            (region_chrom, region_start, region_end) = region
+            (region_chrom, region_start, region_end, sex, ploidy) = region
+            sex = sex.lower()
             if chrom == region_chrom and (region_start < pos <= region_end):
-                return True
-        return False
+                if sex not in valid_sex:
+                    raise ValueError(f"Sex can only be: {valid_sex}")
+                elif sex in male:
+                    target_sex = "male"
+                else:
+                    target_sex = "female"
+                if ploidy not in [0,1]:
+                    raise ValueError("Ploidy in non-diploid regions should be less \
+                                     than 0 or 1.")
+                ploidy_dict |= {target_sex: ploidy}
+        return ploidy_dict
+    
+    def convert_to_missing(self, sample_idx: int):
+        """Convert diploid genotype to missing."""
+        format = self.format.split(":")
+        sample = self.sample_data[sample_idx].split(":")
+        sample_dict = dict(zip(format, sample))
+        sample_dict |= {"GT": "./."}
+        new_sample = [sample_dict[key] for key in format]
+        return new_sample
 
     def convert_to_haploid(self, sample_idx: int):
         """Convert diploid genotype to haploid."""
         format = self.format.split(":")
         sample = self.sample_data[sample_idx].split(":")
-        # deepvariant
         sample_dict = dict(zip(format, sample))
+        # deepvariant
         if "PL" in format:
             logger.debug(f"Using PL to fix ploidy at {self.chrom}:{self.pos}")
             pls = sample_dict["PL"].split(",")
-            if (len(pls) == 2) or (len(sample_dict["GT"].split("/")) == 1):
-                logger.debug("Genotype is already haploid.")
-            if len(pls) != 3:
-                raise ValueError(
-                    f"PL field does not have 3 values as expected \
-                                    for {sample} at {self.chrom}:{self.pos}"
-                )
+            pls = [int(pl) for pl in pls]
+            if ("|" not in sample_dict["GT"]) and ("/" not in sample_dict["GT"]):
+                    logger.critical("Genotype is already haploid.")
             else:
                 # update PL, GQ, and GT
+                
                 num_alleles = len(self.alts) + 1
                 un_normalized_probs = [10 ** (pl / -10) for pl in pls]
                 homozygous_un_normalized_probs = []
@@ -239,15 +262,16 @@ class VariantRecord(object):
                 )
                 haploid_pls = [int(-10 * math.log10(p)) for p in haploid_probs]
                 min_pl = min(haploid_pls)
-                haploid_pls = [pl - min_pl for pl in haploid_pls]
                 gq = 10000
+                haploid_pls = [pl - min_pl for pl in haploid_pls]
                 for i, pl in enumerate(haploid_pls):
                     if pl == 0:
                         # maintain a no call
                         gt = "." if sample_dict["GT"] == "./." else i
                     elif pl < gq:
                         gq = pl
-                sample_dict |= {"PL": ",".join(haploid_pls), "GT": gt, "GQ": gq}
+                haploid_pls = [str(pl) for pl in haploid_pls]
+                sample_dict |= {"PL": ",".join(haploid_pls), "GT": str(gt), "GQ": str(gq)}
         # pbsv
         elif "AD" in format:
             logger.debug(f"Using AD to fix ploidy at {self.chrom}:{self.pos}")
@@ -267,13 +291,15 @@ class VariantRecord(object):
                 gt = "."
             else:
                 gt = ads.index(max_ad)
-                sample_dict |= {"GT": gt}
+                sample_dict |= {"GT": str(gt)}
         else:
             raise ValueError(f"Format {format} is not supported for fixing ploidy.")
         new_sample = [sample_dict[key] for key in format]
         return new_sample
 
-    def fix_ploidy(self, sexes: list[str], regions: list[tuple[str, int, int]]):
+    def fix_ploidy(self, sexes: list[str], 
+                   non_diploid_regions: list[tuple[str, int, int]], 
+                   ):
         """Fix ploidy for hemizygous loci."""
         if (n_sexes := len(sexes)) != (n_samples := len(self.sample_data)):
             raise ValueError(
@@ -286,17 +312,34 @@ class VariantRecord(object):
                 "Sample data has already been modified. Fix \
                              ploidy before shuffling samples or updating genotypes."
             )
-
-        if self.in_regions(self.chrom, int(self.pos), regions):
+        
+        if (ploidy_dict := self.check_ploidy(self.chrom, int(self.pos), non_diploid_regions)):
             for sample_idx in range(len(self.sample_data)):
                 sex = sexes[sample_idx].lower()
-                if sex in ["m", "male", "xy"]:
-                    new_sample = self.convert_to_haploid(sample_idx)
-                    self.sample_data[sample_idx] = ":".join(new_sample)
-                elif sex not in ["f", "female", "xx"]:
+                if "male" in ploidy_dict:
+                    if sex in ["m", "male", "xy"]:
+                        if ploidy_dict["male"] == 1:
+                            new_sample = self.convert_to_haploid(sample_idx)
+                            self.sample_data[sample_idx] = ":".join(new_sample)
+                        else:
+                            logger.warning("Are you sure there should be regions \
+                                           with 0 ploidy specified for males?")
+                            new_sample = self.convert_to_missing(sample_idx)
+                            self.sample_data[sample_idx] = ":".join(new_sample)
+                if "female" in ploidy_dict:
+                    if sex in ["f", "female", "xx"]:
+                        if ploidy_dict["female"] == 1:
+                            logger.warning("Are you sure there should be haploid \
+                                           regions specified for females?")
+                            new_sample = self.convert_to_haploid(sample_idx)
+                            self.sample_data[sample_idx] = ":".join(new_sample)
+                        else:
+                            new_sample = self.convert_to_missing(sample_idx)
+                            self.sample_data[sample_idx] = ":".join(new_sample)
+                elif sex not in ["m", "male", "xy","f", "female", "xx"]:
                     raise ValueError(
                         f"The specified sex '{sex}' is not valid. Please \
                                      use m, male, or xy for males and f, female, \
                                      or xx for females."
                     )
-        self.line = self.variant_data + self.sample_data
+                self.line = self.variant_data + self.sample_data
