@@ -4,7 +4,6 @@ import "../../tasks/glnexus.wdl" as Glnexus
 import "../../tasks/pbsv.wdl" as Pbsv
 import "../../tasks/sniffles.wdl" as Sniffles
 import "../../tasks/hificnv.wdl" as Hificnv
-import "../../tasks/hiphase.wdl" as Hiphase
 import "../../tasks/peddy.wdl" as Peddy
 import "../../tasks/vcfparser.wdl" as Vcfparser
 import "../../tasks/bcftools.wdl" as Bcftools
@@ -14,13 +13,14 @@ workflow cohort_combine_samples {
   input {
     String cohort_id
     Boolean anonymize_output
+    Int max_samples_pbsv_call
 
     Array[String] sample_ids
     Array[String] sexes
     Array[IndexData] aligned_bams
-    Array[Array[File]] svsigs
-    Array[IndexData] gvcfs
-    Array[File] snfs
+    Array[Array[File]] pbsv_svsigs
+    Array[IndexData] deepvariant_gvcfs
+    Array[File] sniffles_snfs
     Array[File?] trgt_vcfs
     Array[File?] hificnv_vcfs
 
@@ -29,17 +29,22 @@ workflow cohort_combine_samples {
     RuntimeAttributes default_runtime_attributes 
   }
 
-  scatter (gvcf_object in gvcfs) {
-		File gvcf = gvcf_object.data
-		File gvcf_index = gvcf_object.index
+  scatter (gvcf_object in deepvariant_gvcfs) {
+		File deepvariant_gvcf = gvcf_object.data
+		File deepvariant_gvcf_index = gvcf_object.index
+	}
+
+  scatter (bam_object in aligned_bams) {
+		File aligned_bam = bam_object.data
+		File aligned_bam_index = bam_object.index
 	}
 
   # joint call small variants with GLnexus
   call Glnexus.glnexus {
     input:
       cohort_id = cohort_id,
-      gvcfs = gvcf,
-      gvcf_indexes = gvcf_index,
+      gvcfs = deepvariant_gvcf,
+      gvcf_indexes = deepvariant_gvcf_index,
       reference_name = reference.name,
       runtime_attributes = default_runtime_attributes
   }
@@ -68,41 +73,79 @@ workflow cohort_combine_samples {
     }
   }
 
-  # joint call structural variants with pbsv
-  scatter (idx in range(length(reference.chromosomes))) {
-    call Pbsv.pbsv_call {
+  # limit # of samples being routed to pbsv because it will fail with too many samples
+  # get max size of samples for pbsv to process
+  Int n_pbsv_call_groups = ceil(length(sample_ids)/max_samples_pbsv_call)
+
+  scatter (group_idx in range(n_pbsv_call_groups)) {
+    # subsample based on sample index
+    scatter (sample_idx in range(length(sample_ids))) {
+      Int sample_group = sample_idx - (group_idx*max_samples_pbsv_call)
+      if (sample_group == group_idx) {
+        Array[File] group_svsigs = pbsv_svsigs[sample_idx]
+        String group_sample_ids = sample_ids[sample_idx]
+      }
+    }
+
+
+
+    # transpose svsigs to order by chromosome instead of sample
+    Array[Array[File]] group_svsigs_transposed = transpose(select_all(group_svsigs))
+
+    # joint call structural variants with pbsv
+    scatter (idx in range(length(reference.chromosomes))) {
+      call Pbsv.pbsv_call {
+        input:
+          sample_id = "~{cohort_id}.group_~{group_idx}",
+          svsigs = group_svsigs_transposed[idx],
+          sample_count = length(group_sample_ids),
+          region = reference.chromosomes[idx],
+          reference_name = reference.name,
+          reference_fasta = reference.fasta.data,
+          reference_index = reference.fasta.index,
+          runtime_attributes = default_runtime_attributes
+      }
+    }
+
+    # concat chromosome-specific pbsv calls into single vcf
+    call Pbsv.concat_vcfs {
       input:
-        sample_id = cohort_id,
-        svsigs = svsigs[idx],
-        sample_count = length(sample_ids),
-        region = reference.chromosomes[idx],
-        reference_name = reference.name,
-        reference_fasta = reference.fasta.data,
-        reference_index = reference.fasta.index,
+        vcfs = pbsv_call.vcf,
+        output_vcf_name = "~{cohort_id}.group_~{group_idx}.~{reference.name}.pbsv.vcf",
         runtime_attributes = default_runtime_attributes
     }
-  }
 
-  call Pbsv.concat_vcfs {
-    input:
-      vcfs = pbsv_call.vcf,
-      output_vcf_name = "~{cohort_id}.~{reference.name}.pbsv.vcf",
-      runtime_attributes = default_runtime_attributes
-  }
+    # pbsv stats per sample
+    call Bcftools.structural_variant_stats as pbsv_stats {
+      input:
+        vcf = concat_vcfs.concatenated_vcf,
+        sample_ids = sample_ids,
+        non_diploid_regions = reference.non_diploid_regions,
+        runtime_attributes = default_runtime_attributes
+    }
 
-  call Bcftools.structural_variant_stats as pbsv_stats {
-    input:
-      vcf = concat_vcfs.concatenated_vcf,
-      sample_ids = sample_ids,
-      non_diploid_regions = reference.non_diploid_regions,
-      runtime_attributes = default_runtime_attributes
+    # postprocess pbsv
+    call Vcfparser.postprocess_joint_vcf as postprocess_pbsv_vcf {
+      input:
+        vcf = concat_vcfs.concatenated_vcf,
+        cohort_id = cohort_id,
+        anonymize_output = anonymize_output,
+        sample_plus_sexes = sample_plus_sex,
+        non_diploid_regions = reference.non_diploid_regions,
+        runtime_attributes = default_runtime_attributes
+    }
+  
+    IndexData pbsv_vcf = { 
+      "data": postprocess_pbsv_vcf.postprocessed_vcf,
+      "index": postprocess_pbsv_vcf.postprocessed_vcf_index 
+      }
   }
 
   # joint call structural variants with sniffles
   call Sniffles.sniffles_call {
     input:
       sample_id = cohort_id,
-      snfs = snfs,
+      snfs = sniffles_snfs,
       reference_name = reference.name,
       reference_fasta = reference.fasta.data,
       reference_index = reference.fasta.index,
@@ -118,48 +161,14 @@ workflow cohort_combine_samples {
       runtime_attributes = default_runtime_attributes
   }
 
-
-  scatter (bam_object in aligned_bams) {
-		File aligned_bam = bam_object.data
-		File aligned_bam_index = bam_object.index
-	}
-
-  if (!anonymize_output) {
-    # phase pbsv and deepvariant vcfs
-    call Hiphase.hiphase {
-      input:
-        cohort_id = cohort_id,
-        sample_ids = sample_ids,
-        aligned_bams = aligned_bam,
-        aligned_bam_indexes = aligned_bam_index,
-        deepvariant_vcf = glnexus.vcf,
-        deepvariant_vcf_index = glnexus.vcf_index,
-        pbsv_vcf = concat_vcfs.concatenated_vcf,
-        reference_fasta = reference.fasta.data,
-        reference_index = reference.fasta.index,
-        runtime_attributes = default_runtime_attributes
-    }
-  }
-
   scatter (idx in range(length(sample_ids))) {
     String sample_plus_sex = "~{sample_ids[idx]}+~{sexes[idx]}}"
   }
 
-  # pbsv
-  call Vcfparser.postprocess_joint_vcf as postprocess_pbsv_vcf {
-    input:
-      vcf = select_first([hiphase.pbsv_output_vcf, concat_vcfs.concatenated_vcf]),
-      cohort_id = cohort_id,
-      anonymize_output = anonymize_output,
-      sample_plus_sexes = sample_plus_sex,
-      non_diploid_regions = reference.non_diploid_regions,
-      runtime_attributes = default_runtime_attributes
-  }
-
-  # deepvariant
+  # postprocess deepvariant
   call Vcfparser.postprocess_joint_vcf as postprocess_deepvariant_vcf {
     input:
-      vcf = select_first([hiphase.deepvariant_output_vcf, glnexus.vcf]),
+      vcf = glnexus.vcf,
       cohort_id = cohort_id,
       anonymize_output = anonymize_output,
       sample_plus_sexes = sample_plus_sex,
@@ -178,7 +187,7 @@ workflow cohort_combine_samples {
       runtime_attributes = default_runtime_attributes
   }
 
-  # trgt 
+  # postprocess trgt 
   if (length(trgt_vcfs) > 0) {
     call Vcfparser.merge_trgt_vcfs {
       input:
@@ -195,7 +204,7 @@ workflow cohort_combine_samples {
       }
   }
   
-  # hificnv
+  # postprocess hificnv
   if (length(hificnv_vcfs) > 0) {
     call Hificnv.merge_hificnv_vcfs {
       input:
@@ -226,10 +235,7 @@ workflow cohort_combine_samples {
       "data": postprocess_deepvariant_vcf.postprocessed_vcf,
       "index": postprocess_deepvariant_vcf.postprocessed_vcf_index
       }
-    IndexData cohort_pbsv_vcf = { 
-      "data": postprocess_pbsv_vcf.postprocessed_vcf,
-      "index": postprocess_pbsv_vcf.postprocessed_vcf_index 
-      }
+    Array[IndexData] cohort_pbsv_vcfs = pbsv_vcf
     IndexData cohort_sniffles_vcf = { 
       "data": postprocess_sniffles_vcf.postprocessed_vcf,
       "index": postprocess_sniffles_vcf.postprocessed_vcf_index
@@ -238,11 +244,11 @@ workflow cohort_combine_samples {
     IndexData? cohort_hificnv_vcf = cohort_hificnv
 
     # Logs
-    Array[File] pbsv_call_logs = pbsv_call.log # for testing memory usage
+    Array[Array[File]] pbsv_call_logs = pbsv_call.log # for testing memory usage
     
     # VCF stats
     File cohort_deepvariant_vcf_stats = small_variant_stats.stats
-    File cohort_pbsv_vcf_stats = pbsv_stats.stats
+    Array[File] cohort_pbsv_vcf_stats = pbsv_stats.stats
     File cohort_sniffles_vcf_stats = sniffles_stats.stats
     
     # Ancestry when peddy is run
@@ -253,10 +259,5 @@ workflow cohort_combine_samples {
     File? peddy_html = peddy.html
     File? peddy_ped = peddy.ped
     File? peddy_vs_html = peddy.vs_html
-
-    # Phasing when data is not anonymized
-    File? hiphase_stats = hiphase.stats
-    File? hiphase_blocks = hiphase.blocks
-    File? hiphase_summary = hiphase.summary
   }
 }
