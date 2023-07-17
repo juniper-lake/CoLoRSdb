@@ -45,8 +45,7 @@ class VCFParser(object):
             self.vcf = open(infile, mode="r", encoding="utf-8", errors="strict")
         else:
             raise IOError(
-                "File is not in a supported format!\n"
-                " Or use correct ending(.vcf or .vcf.gz)"
+                "File is not in a supported format with correct extension (.vcf or .vcf.gz)"
             )
 
         # Parse the metadata lines
@@ -83,15 +82,14 @@ class VCFParser(object):
         """Change sample names and update header line with provided list of names."""
         if len(sample_names) != len(self.samples):
             raise ValueError(
-                f"Number of sample names ({len(sample_names)}) does \
-                             not match number of samples ({len(self.samples)})"
+                f"Number of sample names ({len(sample_names)}) does not match number of samples ({len(self.samples)})"
             )
+        
         elif not all(
             self.sample_pattern.match(sample_name) for sample_name in sample_names
         ):
             raise ValueError(
-                "Sample names can only contain letters, numbers \
-                             and underscores."
+                "Sample names can only contain letters, numbers and underscores."
             )
         else:
             logger.info(f"Changing sample names to: {sample_names}")
@@ -117,8 +115,7 @@ class VCFParser(object):
                 logger.debug("Checking if variant line is malformed")
                 if len(self.header) != len(variant_line):
                     raise SyntaxError(
-                        f"One of the variant lines is malformed: \
-                                      {self.next_line}"
+                        f"One of the variant lines is malformed: {self.next_line}"
                     )
 
                 variant = VariantRecord(variant_line)
@@ -221,8 +218,7 @@ class VariantRecord(object):
                 else:
                     target_sex = "female"
                 if ploidy not in [0,1]:
-                    raise ValueError("Ploidy in non-diploid regions should be less \
-                                     than 0 or 1.")
+                    raise ValueError("Ploidy in non-diploid regions should be less than 0 or 1.")
                 ploidy_dict |= {target_sex: ploidy}
         return ploidy_dict
     
@@ -310,14 +306,12 @@ class VariantRecord(object):
         """Fix ploidy for hemizygous loci."""
         if (n_sexes := len(sexes)) != (n_samples := len(self.sample_data)):
             raise ValueError(
-                f"Number of sexes {n_sexes} does not match number of \
-                             samples {n_samples}"
+                f"Number of sexes {n_sexes} does not match number of samples {n_samples}"
             )
 
         if self.original_sample_data != self.sample_data:
             raise ValueError(
-                "Sample data has already been modified. Fix \
-                             ploidy before shuffling samples or updating genotypes."
+                "Sample data has already been modified. Fix ploidy before shuffling samples or updating genotypes."
             )
         
         if (ploidy_dict := self.check_ploidy(self.chrom, int(self.pos), non_diploid_regions)):
@@ -329,15 +323,13 @@ class VariantRecord(object):
                             new_sample = self.convert_to_haploid(sample_idx)
                             self.sample_data[sample_idx] = ":".join(new_sample)
                         else:
-                            logger.warning("Are you sure there should be regions \
-                                           with 0 ploidy specified for males?")
+                            logger.warning("Are you sure there should be regions with 0 ploidy specified for males?")
                             new_sample = self.convert_to_missing(sample_idx)
                             self.sample_data[sample_idx] = ":".join(new_sample)
                 if "female" in ploidy_dict:
                     if sex in ["f", "female", "xx"]:
                         if ploidy_dict["female"] == 1:
-                            logger.warning("Are you sure there should be haploid \
-                                           regions specified for females?")
+                            logger.warning("Are you sure there should be haploid regions specified for females?")
                             new_sample = self.convert_to_haploid(sample_idx)
                             self.sample_data[sample_idx] = ":".join(new_sample)
                         else:
@@ -345,8 +337,7 @@ class VariantRecord(object):
                             self.sample_data[sample_idx] = ":".join(new_sample)
                 elif sex not in ["m", "male", "xy","f", "female", "xx"]:
                     raise ValueError(
-                        f"The specified sex '{sex}' is not valid. Please \
-                                     use m, male, or xy for males and f, female, \
-                                     or xx for females."
+                        f"The specified sex '{sex}' is not valid. Please use m, male, or xy for males\n"
+                        "and f, female, or xx for females."
                     )
                 self.line = self.variant_data + self.sample_data

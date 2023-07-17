@@ -140,13 +140,11 @@ def merge_trgt_vcfs(
         for other_sample_record in other_sample_records:
             if sample1_record.info != other_sample_record.info:
                 raise ValueError(
-                    "VCFs have different INFO fields. Were all VCFs produced with \
-                        the same TRGT parameters and version? Are all VCFs sorted?"
+                    "VCFs have different INFO fields for the same locus. Were the VCFs sorted?"
                 )
             if sample1_record.format != other_sample_record.format:
                 raise ValueError(
-                    "VCFs have different FORMAT fields. Were all VCFs produced with \
-                        the same TRGT parameters and version? Are all VCFs sorted?"
+                    "VCFs have different INFO fields for the same locus. Were the VCFs sorted?"
                 )
 
         alts = sample1_record.alts + flatten(
