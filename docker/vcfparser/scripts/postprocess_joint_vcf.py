@@ -31,16 +31,15 @@ def parse_args(args):
         "--non_diploid_regions",
         dest="non_diploid_regions_file",
         type=str,
-        help="TSV file with haploid regions in 1-based closed [start, end] coordinates,\
-            columns include chrom, start, end, sex, ploidy, required for fixing ploidy",
+        help="TSV file with haploid regions in 1-based closed [start, end] coordinates,\n"
+            "columns include chrom, start, end, sex, ploidy, required for fixing ploidy",
     )
     parser.add_argument(
         "--sample_sexes",
         dest="sexes",
         type=str,
         nargs="+",
-        help="List of sample_name+sex (e.g. sample1+M sample2+female), \
-            required for fixing ploidy",
+        help="List of sample_name+sex (e.g. sample1+M sample2+female), required for fixing ploidy",
     )
     parser.add_argument("--outfile", dest="outfile", help="output file name")
     parser.add_argument(
@@ -81,8 +80,7 @@ def postprocess_joint_vcf(
                     continue
                 line_list = line.rstrip().split()
                 if len(line_list) != 5:
-                    raise IOError(f"File {non_diploid_regions_file} with haploid regions is \
-                                  not in the correct format.")
+                    raise IOError(f"Non diploid file {non_diploid_regions_file} is not in the correct format.")
                 else:
                     try:
                         non_diploid_regions.append(
@@ -90,20 +88,17 @@ def postprocess_joint_vcf(
                              line_list[3], int(line_list[4]))
                         )
                         logger.debug(
-                            f"Added region \
-                                {line_list[0]}:{line_list[1]}-{line_list[2], line_list[3], line_list[4]}"
+                            f"Added region {line_list[0]}:{line_list[1]}-{line_list[2], line_list[3], line_list[4]}"
                         )
                     except ValueError:
                         raise IOError(
-                            f"File {non_diploid_regions_file} with haploid regions is not in\
-                                the correct format."
+                            f"File {non_diploid_regions_file} with haploid regions is not in the correct format."
                         )
             if not non_diploid_regions:
                 raise IOError(f"File {non_diploid_regions_file} is empty.")
         if not sexes:
             raise IOError(
-                "File of haploid regions was provided but no \
-                          sample sexes were specified."
+                "File of haploid regions was provided but no sample sexes were specified."
             )
         
     # check if outfile exists
@@ -124,8 +119,7 @@ def postprocess_joint_vcf(
     if sexes:
         if not non_diploid_regions:
             raise IOError(
-                "Sample sexes were specified but no file of haploid \
-                          regions was provided."
+                "Sample sexes were specified but no file of haploid regions was provided."
             )
         sexes_dict = dict(s.split("+") for s in sexes)
         sexes_sorted = [sexes_dict[sample] for sample in vcf.samples]
