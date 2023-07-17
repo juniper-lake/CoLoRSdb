@@ -32,8 +32,7 @@ task small_variant_stats {
       --targets-file ^~{non_diploid_regions} \
       --fasta-ref ~{reference} \
       ~{vcf} \
-    > ~{vcf_basename}.stats.txt
-
+    > ~{vcf_basename}.diploid_regions.stats.txt
   >>>
 
   output {
@@ -85,12 +84,12 @@ task structural_variant_stats {
       cat ~{vcf_basename}.$SAMPLE.txt \
         | datamash -s groupby 1,2 count 1 \
         | awk -v OFS="\t" -v sample=$SAMPLE '{print sample,$0}' \
-        >> ~{vcf_basename}.stats.tsv
+        >> ~{vcf_basename}.diploid_regions.stats.tsv
     done
   >>>
 
   output {
-    File stats = "~{vcf_basename}.diploid_regions.stats.txt"
+    File stats = "~{vcf_basename}.diploid_regions.stats.tsv"
   }
 
   runtime {

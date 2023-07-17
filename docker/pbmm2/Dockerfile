@@ -1,4 +1,4 @@
-FROM ubuntu:focal
+FROM python:3.9-buster
 
 LABEL org.opencontainers.image.authors="Juniper Lake <jlake@pacificbiosciences.com>"
 

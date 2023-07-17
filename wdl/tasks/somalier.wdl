@@ -1,79 +1,26 @@
 version 1.0
 
-# Extract genotypes from known loci and compare across samples/movies for QC
+# Quality control of samples (sex, sample swaps, related samples) using somalier
 
 import "../structs.wdl"
 
-task somalier_extract {
-
+task somalier_sample_swap {
   input {
     String sample_id
-    String sample_prefix
-    File bam
-    File bam_index
+    Array[File] bams
+    Array[File] bam_indexes
+    Array[String] movie_names
 
     File reference_fasta
-    File reference_index
+    File reference_index    
     File somalier_sites_vcf
 
     RuntimeAttributes runtime_attributes
   }
 
-  Int disk_size = ceil((size(bam, "GB") + size(reference_fasta, "GB")) * 2.5 + 5)
-  Int threads = 1
-
-  command<<<
-
-    set -euo pipefail
-
-    # extract sites with movie prefix to check sample swaps between movies
-    somalier extract \
-      --fasta=~{reference_fasta} \
-      --sites=~{somalier_sites_vcf} \
-      --out-dir=extracted_movies \
-      --sample-prefix=~{sample_prefix} \
-      ~{bam}
-    
-    # extract sites again without movie prefix to check sample relatedness
-    somalier extract \
-      --fasta=~{reference_fasta} \
-      --sites=~{somalier_sites_vcf} \
-      --out-dir=extracted_samples \
-      ~{bam}
-
-  >>>
-
-  output {
-    File extracted_sites_per_movie = "extracted_movies/~{sample_id}.somalier"
-    File extracted_sites_per_sample = "extracted_samples/~{sample_id}.somalier"
-  }
-
-  runtime {
-    cpu: threads
-    memory: "8 GB"
-    disk: "~{disk_size} GB"
-    disks: "local-disk ~{disk_size} HDD"
-    preemptible: runtime_attributes.preemptible_tries
-    maxRetries: runtime_attributes.max_retries
-    awsBatchRetryAttempts: runtime_attributes.max_retries
-    queueArn: runtime_attributes.queue_arn
-    zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/somalier:0.2.16"
-  }
-}
-
-task somalier_relate_movies {
-
-  input {
-    String sample_id
-    Array[File] extracted_sites_per_movie
-
-    RuntimeAttributes runtime_attributes
-  }
-
-  Int n_files = length(extracted_sites_per_movie)
+  Int n_files = length(bams)
   Int disk_size = 20
-  Int threads = 1
+  Int threads = n_files
 
   command<<<
     set -euo pipefail
@@ -82,15 +29,26 @@ task somalier_relate_movies {
     if [ ~{n_files} -eq 1 ]; then
       echo "1.0" > min_relatedness.txt
     else
+      paste <(echo -e "~{sep="\n" bams}") <(echo -e "~{sep="\n" movie_names}") > parallel_variables.txt
+      mkdir extracted
+      parallel \
+        --jobs ~{threads} \
+        --colsep '\t' \
+        --arg-file parallel_variables.txt \
+        'somalier extract \
+          --fasta=~{reference_fasta} \
+          --sites=~{somalier_sites_vcf} \
+          --out-dir={2} \
+          --sample-prefix={2} \
+          {1} && mv {2}/~{sample_id}.somalier extracted/{2}.somalier'
+
       # calculate relatedness among movies
       somalier relate \
         --min-depth=4 \
-        --infer \
         --output-prefix=~{sample_id}.somalier \
-        ~{sep=" " extracted_sites_per_movie}
+        extracted/*.somalier
       awk 'NR>1 {print $3}' ~{sample_id}.somalier.pairs.tsv | sort -n | head -1 > min_relatedness.txt
     fi
-
   >>>
 
   output {
@@ -115,12 +73,58 @@ task somalier_relate_movies {
   }
 }
 
+task somalier_extract {
+  input {
+    String sample_id
+    String? sample_prefix
+    File bam
+    File bam_index
+
+    File reference_fasta
+    File reference_index
+    File somalier_sites_vcf
+
+    RuntimeAttributes runtime_attributes
+  }
+
+  String out_dir = select_first([sample_prefix, "extracted"])
+  Int disk_size = ceil((size(bam, "GB") + size(reference_fasta, "GB")) * 2.5 + 5)
+  Int threads = 1
+
+  command<<<
+    set -euo pipefail
+
+    # extract sites
+    somalier extract \
+      --fasta=~{reference_fasta} \
+      --sites=~{somalier_sites_vcf} \
+      --out-dir=~{out_dir} \
+      ~{"--sample-prefix=" + sample_prefix} \
+      ~{bam}
+  >>>
+
+  output {
+    File extracted_sites = "~{out_dir}/~{sample_id}.somalier"
+  }
+
+  runtime {
+    cpu: threads
+    memory: "8 GB"
+    disk: "~{disk_size} GB"
+    disks: "local-disk ~{disk_size} HDD"
+    preemptible: runtime_attributes.preemptible_tries
+    maxRetries: runtime_attributes.max_retries
+    awsBatchRetryAttempts: runtime_attributes.max_retries
+    queueArn: runtime_attributes.queue_arn
+    zones: runtime_attributes.zones
+    docker: "~{runtime_attributes.container_registry}/somalier:0.2.16"
+  }
+}
 
 task somalier_relate_samples {
-
   input {
     String cohort_id
-    Array[File] extracted_sites_per_sample
+    Array[File] extracted_sites
     Array[String] sample_ids
     Array[Float] coverages
     Float max_pairwise_relatedness
@@ -133,12 +137,13 @@ task somalier_relate_samples {
 
   command<<<
     set -euo pipefail
-
+    
     # calculate relatedness among samples
     somalier relate \
       --min-depth=4 \
       --output-prefix=~{cohort_id}.somalier \
-      ~{sep=" " extracted_sites_per_sample}
+      --infer \
+      ~{sep=" " extracted_sites}
 
     # find samples that have relatedness > max_pairwise_relatedness
     screen_related_samples.py \
@@ -148,20 +153,18 @@ task somalier_relate_samples {
       --coverages ~{sep=" " coverages} \
       --outfile ~{cohort_id}.related_samples_to_remove.tsv
     
-    for $SAMPLE_ID in ~{sep=" " sample_ids}; do
-      grep -w ^${SAMPLE_ID} ~{cohort_id}.related_samples_to_remove.tsv | cut -f2 >> keep_drop.txt
-      grep -w ^${SAMPLE_ID} ~{cohort_id}.related_samples_to_remove.tsv | cut -f3 >> n_relations.txt
-      SEX=$(grep -w ^${SAMPLE_ID} ~{cohort_id}.somalier.samples.tsv | cut -f5)
+    for SAMPLE_ID in ~{sep=" " sample_ids}; do
+      awk -v sample=$SAMPLE_ID '$1==sample {print $2}' ~{cohort_id}.related_samples_to_remove.tsv >> keep_drop.txt
+      awk -v sample=$SAMPLE_ID '$1==sample {print $3}' ~{cohort_id}.related_samples_to_remove.tsv >> n_relations.txt
+      SEX=$(awk -v sample=$SAMPLE_ID '$2==sample {print $5}' ~{cohort_id}.somalier.samples.tsv)
       if [ $SEX -eq 1 ]; then
-        echo "male" > inferred_sex.txt
+        echo "male" >> inferred_sex.txt
       elif [ $SEX -eq 2 ]; then
-        echo "female" > inferred_sex.txt
+        echo "female" >> inferred_sex.txt
       else
-        echo "unknown" > inferred_sex.txt
+        echo "unknown" >> inferred_sex.txt
       fi
     done
-
-    
   >>>
 
   output {

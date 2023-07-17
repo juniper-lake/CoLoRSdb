@@ -2,24 +2,24 @@ FROM ubuntu:focal
 
 LABEL org.opencontainers.image.authors="Juniper Lake <jlake@pacificbiosciences.com>"
 
-RUN apt-get -qq update && apt-get -qq -y install curl bzip2 \
-    && curl -sSL https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -o /tmp/miniconda.sh \
-    && bash /tmp/miniconda.sh -bfp /usr/local \
-    && rm -rf /tmp/miniconda.sh \
-    && conda install -y python=2 \
-    && conda update conda \
-    && apt-get -qq -y remove curl bzip2 \
-    && apt-get -qq -y autoremove \
-    && apt-get autoclean \
-    && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log \
-    && conda clean --all --yes
-
-ENV PATH /opt/conda/bin:"${PATH}"
-
-RUN conda update -y conda
-RUN conda config --add channels bioconda
+RUN apt-get -qq update \
+    && apt-get -qq install \
+        wget \
+        build-essential \
+        zlib1g-dev \
+        libncurses5-dev \
+        liblzma-dev \
+        libbz2-dev \
+        libcurl4-openssl-dev \
+        python3 \
+        python3-pip \
+    && rm -rf /var/lib/apt/lists/*
 
 ARG PEDDY_VERSION
-RUN conda create --yes --name peddy --channel bioconda peddy=${PEDDY_VERSION}
+RUN wget https://github.com/brentp/peddy/archive/refs/tags/v${PEDDY_VERSION}.tar.gz \
+    && tar -xvf v${PEDDY_VERSION}.tar.gz --directory /opt \
+    && rm v${PEDDY_VERSION}.tar.gz
 
-ENV PATH /opt/conda/envs/peddy/bin:"${PATH}"
+RUN cd /opt/peddy-${PEDDY_VERSION} \
+    && python3 -m pip install -r requirements.txt \
+    && python3 -m pip install --editable .

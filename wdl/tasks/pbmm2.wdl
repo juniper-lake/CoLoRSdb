@@ -5,7 +5,6 @@ version 1.0
 import "../structs.wdl"
 
 task pbmm2 {
-
   input {
     File movie
     String out_prefix
@@ -20,13 +19,13 @@ task pbmm2 {
 
   Int threads = 24
   Int mem_gb = ceil(threads * 4)
-	Int disk_size = ceil((size(movie, "GB") + size(reference_fasta, "GB")) * 4 + 20)
+  Int disk_size = ceil((size(movie, "GB") + size(reference_fasta, "GB")) * 4 + 20)
   
   command {
     set -euo pipefail
     
     pbmm2 align \
-      -num-threads ~{threads} \
+      --num-threads ~{threads} \
       --sort-memory 4G \
       --sample ~{sample_id} \
       --log-level INFO \
@@ -38,12 +37,10 @@ task pbmm2 {
       ~{out_prefix}.~{reference_name}.bam
   
     # movie stats
-		extract_read_length_and_qual.py \
-			~{movie} \
-		> ~{out_prefix}.read_length_and_quality.tsv
-    }
-
-
+    extract_read_length_and_qual.py \
+      ~{movie} \
+    > ~{out_prefix}.read_length_and_quality.tsv
+  }
 
   output {
     File aligned_bam = "~{out_prefix}.~{reference_name}.bam"
@@ -65,7 +62,6 @@ task pbmm2 {
   }
 }
 
-
 task combine_smrtcell_stats {
   input {
     String sample_id
@@ -81,7 +77,7 @@ task combine_smrtcell_stats {
 
     cat ~{sep=' ' read_length_and_quality_tsvs} \
       | datamash count 1 countunique 1 median 2 mean 2 pstdev 2 median 3 mean 3 pstdev 3 \
-      | awk '{OFS="\n"; $1=$1}1'
+      | awk '{OFS="\n"; $1=$1}1' \
       > ~{sample_id}.smrtcell_stats.txt
     
     sed '1q;d' ~{sample_id}.smrtcell_stats.txt > read_count.txt
@@ -92,7 +88,6 @@ task combine_smrtcell_stats {
     sed '6q;d' ~{sample_id}.smrtcell_stats.txt > read_quality_median.txt
     sed '7q;d' ~{sample_id}.smrtcell_stats.txt > read_quality_mean.txt
     sed '8q;d' ~{sample_id}.smrtcell_stats.txt > read_quality_stdev.txt
-
   >>>
 
   output {
@@ -121,30 +116,29 @@ task combine_smrtcell_stats {
 }
 
 task merge_bams {
-
   input {
     Array[File] bams
-		String output_bam_name
+    String output_bam_name
 
-		RuntimeAttributes runtime_attributes
+    RuntimeAttributes runtime_attributes
   }
 
   Int threads = 8
-	Int disk_size = ceil(size(bams[0], "GB") * length(bams) * 2 + 20)
+  Int disk_size = ceil(size(bams[0], "GB") * length(bams) * 2 + 20)
 
   command {
-		set -euo pipefail
+    set -euo pipefail
 
-		if [[ "~{length(bams)}" -eq 1 ]]; then
-			mv ~{bams[0]} ~{output_bam_name}
-		else
-			samtools merge \
-				-@ ~{threads - 1} \
-				-o ~{output_bam_name} \
-				~{sep=' ' bams}
-		fi
+    if [[ "~{length(bams)}" -eq 1 ]]; then
+      cp ~{bams[0]} ~{output_bam_name}
+    else
+      samtools merge \
+        -@ ~{threads - 1} \
+        -o ~{output_bam_name} \
+        ~{sep=' ' bams}
+    fi
 
-		samtools index ~{output_bam_name}
+    samtools index ~{output_bam_name}
   }
 
   output {
@@ -155,13 +149,13 @@ task merge_bams {
   runtime {
     cpu: threads
     memory: "1 GB"
-		disk: "~{disk_size} GB"
+    disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
-		preemptible: runtime_attributes.preemptible_tries
-		maxRetries: runtime_attributes.max_retries
-		awsBatchRetryAttempts: runtime_attributes.max_retries
-		queueArn: runtime_attributes.queue_arn
-		zones: runtime_attributes.zones
+    preemptible: runtime_attributes.preemptible_tries
+    maxRetries: runtime_attributes.max_retries
+    awsBatchRetryAttempts: runtime_attributes.max_retries
+    queueArn: runtime_attributes.queue_arn
+    zones: runtime_attributes.zones
     docker: "~{runtime_attributes.container_registry}/samtools:1.14"
   }
 }

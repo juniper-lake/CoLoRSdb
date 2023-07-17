@@ -1,5 +1,7 @@
 version 1.0
 
+# Postprocess VCFs by anonymizing, fixing ploidy, and zipping/indexing
+
 import "../structs.wdl"
 
 task postprocess_joint_vcf {
@@ -20,18 +22,17 @@ task postprocess_joint_vcf {
   
   Int threads = 4
   Int disk_size = ceil((size(vcf, "GB")) * 3.5 + 20) 
-
-
+  
   command {
     set -euo pipefail
 
     # if you don't need to anonymize output or fix ploidy, then just zip and index
-    if [[ ~{just_zip_index} == "true" ]]; then
+    if ~{just_zip_index}; then
       # if already zipped, just index
-      if [[ $file =~ \.gz$ ]]; then
-        mv ~{vcf} ~{outfile}.gz
+      if [[ ~{vcf} == *.gz ]]; then
+        cp ~{vcf} ~{outfile}.gz
       else
-        bgzip -c \
+        bgzip \
           --threads ~{threads} \
           ~{vcf} \
           > ~{outfile}.gz
@@ -44,7 +45,7 @@ task postprocess_joint_vcf {
         --outfile ~{outfile} \
         ~{vcf}
 
-      bgzip -c \
+      bgzip \
         --threads ~{threads} \
         ~{outfile}
     fi
@@ -71,7 +72,6 @@ task postprocess_joint_vcf {
     zones: runtime_attributes.zones
     docker: "~{runtime_attributes.container_registry}/vcfparser:0.1.0"
   }
-
 }
 
 task merge_trgt_vcfs {
@@ -93,19 +93,18 @@ task merge_trgt_vcfs {
     set -euo pipefail
 
     merge_trgt_vcfs.py \
-      --vcfs ~{sep=" " trgt_vcfs} \
       --outfile ~{outfile} \
-      ~{anonymize_prefix}
+      ~{anonymize_prefix} \
+      ~{sep=" " trgt_vcfs} \
+
 
     bgzip \
       --threads ~{threads} \
-      ~{outfile} -c \
-      > ~{outfile}.gz
+      ~{outfile} \
 
     tabix \
       --preset vcf \
-      ~{outfile}.gz   
-    
+      ~{outfile}.gz
   }
 
   output {

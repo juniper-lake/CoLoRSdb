@@ -275,8 +275,6 @@ def flag_related_samples(
 
     # check if outfile exists
     if outfile:
-        if not outfile.endswith(".vcf"):
-            raise ValueError("Output file should end in .vcf")
         if os.path.isfile(outfile):
             raise IOError(f"Output file {outfile} already exists.")
         else:
