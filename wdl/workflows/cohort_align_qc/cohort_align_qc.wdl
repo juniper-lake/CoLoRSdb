@@ -65,18 +65,6 @@ workflow cohort_align_qc {
     }
 
     Boolean pass_swap = if somalier_sample_swap.min_relatedness >= min_movie_relatedness_qc then true else false
-    
-    # extract somalier sites from merged bam
-    call Somalier.somalier_extract as somalier_extract_merged {
-      input:
-        sample_id = sample.sample_id,
-        bam = merged_bam.data,
-        bam_index = merged_bam.index,
-        reference_fasta = reference.fasta.data,
-        reference_index = reference.fasta.index,
-        somalier_sites_vcf = reference.somalier_sites_vcf,
-        runtime_attributes = default_runtime_attributes
-    }
 
     # merge aligned bams
     call Pbmm2.merge_bams {
@@ -89,6 +77,18 @@ workflow cohort_align_qc {
     IndexData merged_bam = {
       "data": merge_bams.merged_bam, 
       "index": merge_bams.merged_bam_index
+    }
+    
+    # extract somalier sites from merged bam
+    call Somalier.somalier_extract as somalier_extract_merged {
+      input:
+        sample_id = sample.sample_id,
+        bam = merged_bam.data,
+        bam_index = merged_bam.index,
+        reference_fasta = reference.fasta.data,
+        reference_index = reference.fasta.index,
+        somalier_sites_vcf = reference.somalier_sites_vcf,
+        runtime_attributes = default_runtime_attributes
     }
 
     # calculate depth of merged bam

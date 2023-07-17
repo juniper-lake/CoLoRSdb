@@ -10,30 +10,18 @@ struct Sample {
   Array[File] movies
 }
 
-struct Cohort {
-  String cohort_id
-  Array[Sample] samples
-
-  Boolean anonymize_output
-}
-
 struct ReferenceData {
   String name
   IndexData fasta
-
   Array[String] chromosomes
-  
   File non_diploid_regions
-
   File tandem_repeat_bed
+  File somalier_sites_vcf
 
   File? trgt_tandem_repeat_bed
-
   IndexData? hificnv_exclude_bed
   File? hificnv_expected_bed_male
   File? hificnv_expected_bed_female
-
-  File somalier_sites_vcf
   File? peddy_sites
   File? peddy_bin
 }
