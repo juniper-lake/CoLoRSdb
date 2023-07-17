@@ -1,5 +1,7 @@
 version 1.0
 
+# Call variants for a single sample
+
 import "../../tasks/sniffles.wdl" as Sniffles
 import "../../tasks/pbsv.wdl" as Pbsv
 import "../deepvariant/deepvariant.wdl" as DeepVariant
@@ -7,7 +9,6 @@ import "../../tasks/trgt.wdl" as Trgt
 import "../../tasks/hificnv.wdl" as Hificnv
 
 workflow sample_call_variants {
-
   input {
     String sample_id
     IndexData aligned_bam
@@ -89,6 +90,10 @@ workflow sample_call_variants {
           expected_bed_female = select_first([reference.hificnv_expected_bed_female]),
           runtime_attributes = default_runtime_attributes
       }
+
+      IndexData hificnv_indexed_vcf = {
+        "data": hificnv.cnv_vcf,
+        "index": hificnv.cnv_vcf_index}
     }
 
   output {
@@ -96,6 +101,6 @@ workflow sample_call_variants {
     Array[File] pbsv_svsigs = pbsv_discover.svsig
     IndexData deepvariant_gvcf = deepvariant.gvcf
     File? trgt_vcf = trgt.repeat_vcf
-    File? hificnv_vcf = hificnv.cnv_vcf
+    IndexData? hificnv_vcf = hificnv_indexed_vcf
   }
 }

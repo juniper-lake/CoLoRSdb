@@ -1,9 +1,10 @@
 version 1.0
 
+# Call structural variants with pbsv
+
 import "../structs.wdl"
 
 task pbsv_discover {
-
   input {
     File bam
     File bam_index
@@ -36,20 +37,18 @@ task pbsv_discover {
   runtime {
     cpu: 2
     memory: "8 GB"
-		disk: "~{disk_size} GB"
+    disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
-		preemptible: runtime_attributes.preemptible_tries
-		maxRetries: runtime_attributes.max_retries
-		awsBatchRetryAttempts: runtime_attributes.max_retries
-		queueArn: runtime_attributes.queue_arn
-		zones: runtime_attributes.zones
+    preemptible: runtime_attributes.preemptible_tries
+    maxRetries: runtime_attributes.max_retries
+    awsBatchRetryAttempts: runtime_attributes.max_retries
+    queueArn: runtime_attributes.queue_arn
+    zones: runtime_attributes.zones
     docker: "~{runtime_attributes.container_registry}/pbsv:2.9.0"
   }
 }
 
-
 task pbsv_call {
-
   input {
     String sample_id
     Array[File] svsigs
@@ -63,12 +62,11 @@ task pbsv_call {
     Int? pbsv_call_mem_gb
 
     RuntimeAttributes runtime_attributes
-
   }
   
   Int threads = 8
   Int default_mem_gb = if select_first([sample_count, 1]) > 3 then 96 else 64
-	Int mem_gb = select_first([pbsv_call_mem_gb, default_mem_gb])
+  Int mem_gb = select_first([pbsv_call_mem_gb, default_mem_gb])
   Int disk_size = ceil((size(svsigs, "GB") + size(reference_fasta, "GB")) * 2 + 20)
 
   command<<<
@@ -93,19 +91,18 @@ task pbsv_call {
   runtime {
     cpu: threads
     memory: "~{mem_gb} GB"
-		disk: "~{disk_size} GB"
+    disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
-		preemptible: runtime_attributes.preemptible_tries
-		maxRetries: runtime_attributes.max_retries
-		awsBatchRetryAttempts: runtime_attributes.max_retries
-		queueArn: runtime_attributes.queue_arn
-		zones: runtime_attributes.zones
+    preemptible: runtime_attributes.preemptible_tries
+    maxRetries: runtime_attributes.max_retries
+    awsBatchRetryAttempts: runtime_attributes.max_retries
+    queueArn: runtime_attributes.queue_arn
+    zones: runtime_attributes.zones
     docker: "~{runtime_attributes.container_registry}/pbsv:2.9.0"
   }
 }
 
 task concat_vcfs {
-  
   input {
     Array[File] vcfs
     String output_vcf_name

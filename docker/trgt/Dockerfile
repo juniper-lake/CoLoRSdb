@@ -37,6 +37,3 @@ RUN wget https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSI
 RUN cd /opt/bcftools-${BCFTOOLS_VERSION} \
 	&& make \
 	&& make install
-
-COPY scripts/* /opt/scripts/
-ENV PATH "${PATH}":/opt/scripts

@@ -12,6 +12,7 @@ RUN apt-get -qq update \
 		wget \
 		build-essential \
 		zlib1g-dev \
+		libncurses5-dev \
 		liblzma-dev \
 		libbz2-dev \
 		libcurl4-openssl-dev \
@@ -24,4 +25,14 @@ RUN wget https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSI
 	&& rm bcftools-${BCFTOOLS_VERSION}.tar.bz2
 RUN cd /opt/bcftools-${BCFTOOLS_VERSION} \
 	&& make \
+	&& make install
+
+ARG DATAMASH_VERSION
+RUN wget https://ftp.gnu.org/gnu/datamash/datamash-${DATAMASH_VERSION}.tar.gz \
+	&& tar -zxvf datamash-${DATAMASH_VERSION}.tar.gz --directory /opt \
+	&& rm datamash-${DATAMASH_VERSION}.tar.gz
+RUN cd /opt/datamash-${DATAMASH_VERSION} \
+	&& ./configure \
+	&& make \
+	&& make check \
 	&& make install

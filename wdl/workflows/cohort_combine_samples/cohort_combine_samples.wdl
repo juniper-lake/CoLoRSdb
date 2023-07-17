@@ -1,5 +1,7 @@
 version 1.0
 
+# Joint call or combine variants for a cohort of samples
+
 import "../../tasks/glnexus.wdl" as Glnexus
 import "../../tasks/pbsv.wdl" as Pbsv
 import "../../tasks/sniffles.wdl" as Sniffles
@@ -7,7 +9,6 @@ import "../../tasks/hificnv.wdl" as Hificnv
 import "../../tasks/peddy.wdl" as Peddy
 import "../../tasks/vcfparser.wdl" as Vcfparser
 import "../../tasks/bcftools.wdl" as Bcftools
-
 
 workflow cohort_combine_samples {
   input {
@@ -22,7 +23,7 @@ workflow cohort_combine_samples {
     Array[IndexData] deepvariant_gvcfs
     Array[File] sniffles_snfs
     Array[File?] trgt_vcfs
-    Array[File?] hificnv_vcfs
+    Array[IndexData?] hificnv_vcfs
 
     ReferenceData reference
 
@@ -30,14 +31,14 @@ workflow cohort_combine_samples {
   }
 
   scatter (gvcf_object in deepvariant_gvcfs) {
-		File deepvariant_gvcf = gvcf_object.data
-		File deepvariant_gvcf_index = gvcf_object.index
-	}
+    File deepvariant_gvcf = gvcf_object.data
+    File deepvariant_gvcf_index = gvcf_object.index
+  }
 
   scatter (bam_object in aligned_bams) {
-		File aligned_bam = bam_object.data
-		File aligned_bam_index = bam_object.index
-	}
+    File aligned_bam = bam_object.data
+    File aligned_bam_index = bam_object.index
+  }
 
   # joint call small variants with GLnexus
   call Glnexus.glnexus {
@@ -77,7 +78,7 @@ workflow cohort_combine_samples {
   # get max size of samples for pbsv to process
   Int n_pbsv_call_groups = ceil(length(sample_ids)/max_samples_pbsv_call)
 
-  scatter (group_idx in range(n_pbsv_call_groups)) {
+  scatter (group_idx in range(n_pbsv_call_groups-1)) {
     # subsample based on sample index
     scatter (sample_idx in range(length(sample_ids))) {
       Int sample_group = sample_idx - (group_idx*max_samples_pbsv_call)
@@ -86,8 +87,6 @@ workflow cohort_combine_samples {
         String group_sample_ids = sample_ids[sample_idx]
       }
     }
-
-
 
     # transpose svsigs to order by chromosome instead of sample
     Array[Array[File]] group_svsigs_transposed = transpose(select_all(group_svsigs))
@@ -162,7 +161,7 @@ workflow cohort_combine_samples {
   }
 
   scatter (idx in range(length(sample_ids))) {
-    String sample_plus_sex = "~{sample_ids[idx]}+~{sexes[idx]}}"
+    String sample_plus_sex = "~{sample_ids[idx]}+~{sexes[idx]}"
   }
 
   # postprocess deepvariant
@@ -206,9 +205,15 @@ workflow cohort_combine_samples {
   
   # postprocess hificnv
   if (length(hificnv_vcfs) > 0) {
+      scatter (vcf_object in select_all(hificnv_vcfs)) {
+        File hificnv_vcf = vcf_object.data
+        File hificnv_vcf_index = vcf_object.index
+      }
+
     call Hificnv.merge_hificnv_vcfs {
       input:
-        cnv_vcfs = select_all(hificnv_vcfs),
+        cnv_vcfs = hificnv_vcf,
+        cnv_vcf_indexes = hificnv_vcf_index,
         cohort_id = cohort_id,
         reference_name = reference.name,
         runtime_attributes = default_runtime_attributes

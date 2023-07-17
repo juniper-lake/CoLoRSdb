@@ -10,6 +10,12 @@ ENV IMAGE_TAG "${IMAGE_TAG}"
 RUN apt-get -qq update \
 	&& apt-get -qq install \
 		wget \
+		build-essential \
+		zlib1g-dev \
+		libncurses5-dev \
+		liblzma-dev \
+		libbz2-dev \
+		libcurl4-openssl-dev \
 		parallel \
 	&& rm -rf /var/lib/apt/lists/*
 

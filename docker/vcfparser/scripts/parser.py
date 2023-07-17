@@ -167,16 +167,22 @@ class VariantRecord(object):
 
     def update_genotypes(self, ref: str, alts: list):
         """Update genotype and haplotypes based on provided alleles."""
-        alleles = [ref] + alts
-        # get new genotype for each sample
+        old_alleles = self.alleles + ["."]
+        new_alleles = [ref] + alts + ["."]
+        unknown_index = len(old_alleles) - 1
+        
+        # get new genotype as number for each sample, replace "." with unknown index
         genotypes = [
-            map(int, sample.split(":")[0].split("/")) for sample in self.sample_data
+            map(lambda s: int(s.replace(".", str(unknown_index))), 
+                sample.split(":")[0].split("/")) 
+            for sample in self.sample_data
         ]
+
         full_genotypes = [
-            [self.alleles[hap] for hap in genotype] for genotype in genotypes
+            [old_alleles[hap] for hap in genotype] for genotype in genotypes
         ]
         new_genotypes = [
-            [alleles.index(hap) for hap in full_genotype]
+            [new_alleles.index(hap) if (hap != ".") else hap for hap in full_genotype]
             for full_genotype in full_genotypes
         ]
 
@@ -287,6 +293,7 @@ class VariantRecord(object):
         elif ("DR" in format) and ("DV" in format):
             logger.debug(f"Using DR+DV to fix ploidy at {self.chrom}:{self.pos}")
             ads = [int(sample_dict["DR"]), int(sample_dict["DV"])]
+            max_ad = max(ads)
             if ads.count(max_ad) == 1:
                 gt = "."
             else:

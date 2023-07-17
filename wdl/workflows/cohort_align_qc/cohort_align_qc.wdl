@@ -1,11 +1,12 @@
 version 1.0
 
+# Align and perform QC on each sample in cohort 
+
 import "../../tasks/pbmm2.wdl" as Pbmm2
 import "../../tasks/somalier.wdl" as Somalier
 import "../../tasks/mosdepth.wdl" as Mosdepth
 
 workflow cohort_align_qc {
-
   input {
     String cohort_id
     Array[Sample] samples
@@ -21,10 +22,10 @@ workflow cohort_align_qc {
   scatter (sample in samples) {
     # align each movie with pbmm2
     scatter (idx in range(length(sample.movies))) {    
-
       # get movie name from movie path but append "_movie1", "_movie2", etc in case file names
       # are not unique or don't follow HiFi naming convention
       String movie_name = sub(basename(sample.movies[idx]), "\\..*", "_movie~{idx}")
+
       call Pbmm2.pbmm2 {
           input: 
             movie = sample.movies[idx],
@@ -40,21 +41,8 @@ workflow cohort_align_qc {
         "data": pbmm2.aligned_bam,
         "index": pbmm2.aligned_bam_index
       }
-      
-      # extract somalier sites from aligned bam
-      call Somalier.somalier_extract {
-        input:
-          sample_id = sample.sample_id,
-          sample_prefix = "~{movie_name}_",
-          bam = aligned_bam.data,
-          bam_index = aligned_bam.index,
-          reference_fasta = reference.fasta.data,
-          reference_index = reference.fasta.index,
-          somalier_sites_vcf = reference.somalier_sites_vcf,
-          runtime_attributes = default_runtime_attributes
-      }
     }
-
+      
     # combine smrtcells stats for multiple movies
     call Pbmm2.combine_smrtcell_stats {
       input:
@@ -64,14 +52,31 @@ workflow cohort_align_qc {
     }
 
     # check for sample swaps among movies
-    call Somalier.somalier_relate_movies {
+    call Somalier.somalier_sample_swap {
       input:
         sample_id = sample.sample_id,
-        extracted_sites_per_movie = somalier_extract.extracted_sites_per_movie,
+        bams = pbmm2.aligned_bam,
+        bam_indexes = pbmm2.aligned_bam_index,
+        movie_names = movie_name,
+        reference_fasta = reference.fasta.data,
+        reference_index = reference.fasta.index,
+        somalier_sites_vcf = reference.somalier_sites_vcf,
         runtime_attributes = default_runtime_attributes
     }
 
-    Boolean pass_swap = if somalier_relate_movies.min_relatedness >= min_movie_relatedness_qc then true else false
+    Boolean pass_swap = if somalier_sample_swap.min_relatedness >= min_movie_relatedness_qc then true else false
+    
+    # extract somalier sites from merged bam
+    call Somalier.somalier_extract as somalier_extract_merged {
+      input:
+        sample_id = sample.sample_id,
+        bam = merged_bam.data,
+        bam_index = merged_bam.index,
+        reference_fasta = reference.fasta.data,
+        reference_index = reference.fasta.index,
+        somalier_sites_vcf = reference.somalier_sites_vcf,
+        runtime_attributes = default_runtime_attributes
+    }
 
     # merge aligned bams
     call Pbmm2.merge_bams {
@@ -102,7 +107,7 @@ workflow cohort_align_qc {
   call Somalier.somalier_relate_samples {
     input:
       cohort_id = cohort_id,
-      extracted_sites_per_sample = flatten(somalier_extract.extracted_sites_per_sample),
+      extracted_sites = somalier_extract_merged.extracted_sites,
       sample_ids = sample_id,
       coverages = mosdepth.mean_coverage,
       max_pairwise_relatedness = max_sample_relatedness_qc,
@@ -110,14 +115,17 @@ workflow cohort_align_qc {
   }
 
   scatter (idx in range(length(samples))) {
-    
     Boolean pass_sex = if somalier_relate_samples.inferred_sexes[idx] != "unknown" then true else false
     Boolean pass_relatedness = if somalier_relate_samples.qc_related_keep_drop[idx] == 'keep' then true else false
     Boolean qc_pass_combined = if pass_swap[idx] && pass_relatedness && pass_sex then true else false
     Float sample_relatedness_qc_threshold = max_sample_relatedness_qc
     Float movie_relatedness_qc_threshold = min_movie_relatedness_qc
-    String min_movie_relatedness = "~{somalier_relate_movies.min_relatedness[idx]}"
-    String n_relations = "~{somalier_relate_samples.n_relations[idx]}"
+    String min_movie_relatedness = somalier_sample_swap.min_relatedness[idx]
+    String n_relations = somalier_relate_samples.n_relations[idx]
+
+    if (qc_pass_combined) {
+      String qc_pass_sample_id = sample_id[idx]
+    }
   }
 
   call summarize_qc {
@@ -150,12 +158,12 @@ workflow cohort_align_qc {
   output {
     Array[IndexData] aligned_bams = merged_bam
     Array[Boolean] qc_pass = qc_pass_combined
+    Array[String] qc_pass_sample_ids = select_all(qc_pass_sample_id)
     Array[String] inferred_sexes = somalier_relate_samples.inferred_sexes
     File pairwise_relatedness = somalier_relate_samples.pairs
     File qc_summary_tsv = summarize_qc.quality_control_summary
   }
 }
-
 
 task summarize_qc {
   input {
@@ -210,7 +218,7 @@ task summarize_qc {
       <(echo -e "read_length_mean\n~{sep="\n" read_length_mean}") \
       <(echo -e "read_length_median\n~{sep="\n" read_length_median}") \
       <(echo -e "read_length_stdev\n~{sep="\n" read_length_stdev}") \
-      > ~{cohort_id}.quality_control_summary.tsv
+      > ~{cohort_id}.~{reference_name}.quality_control_summary.tsv
   >>>
 
   output {

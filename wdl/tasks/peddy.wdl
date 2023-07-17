@@ -1,5 +1,7 @@
 version 1.0
 
+# Estimate ancestry with peddy
+
 import "../structs.wdl"
 
 task peddy {
@@ -18,7 +20,7 @@ task peddy {
 
   Int threads = 4
   Int mem_gb = ceil(threads * 4)
-	Int disk_size = ceil((size(vcf, "GB") + size(peddy_sites, "GB") + size(peddy_bin, "GB")) * 2.5 + 10)
+  Int disk_size = ceil((size(vcf, "GB") + size(peddy_sites, "GB") + size(peddy_bin, "GB")) * 2.5 + 10)
 
   command <<<
     set -euo pipefail
@@ -33,9 +35,9 @@ task peddy {
     ln -s ~{peddy_sites} peddy.sites
     ln -s ~{peddy_bin} peddy.sites.bin.gz
 
-    python -m peddy --version
+    peddy --version
 
-    python -m peddy \
+    peddy \
       --procs ~{threads} \
       --sites peddy.sites \
       --prefix ~{cohort_id} \
@@ -66,5 +68,3 @@ task peddy {
     docker: "~{runtime_attributes.container_registry}/peddy:0.4.8"
   }  
 }
-
-
