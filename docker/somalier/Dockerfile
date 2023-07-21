@@ -36,8 +36,5 @@ RUN cd /opt/htslib-${HTSLIB_VERSION} \
 ARG LOGURU_VERSION
 RUN python3 -m pip install loguru==${LOGURU_VERSION}
 
-ARG PYTEST_VERSION
-RUN python3 -m pip install pytest==${PYTEST_VERSION}
-
 ARG PANDAS_VERSION
 RUN python3 -m pip install pandas==${PANDAS_VERSION}

@@ -210,7 +210,7 @@ def test_flag_related_samples(capfd):
     )
     out, err = capfd.readouterr()
     assert (
-        out == "dad\tdad_bro\tmom\tbro\tchild\ndrop\tkeep\tkeep\tdrop\tdrop\n"
+        out == "dad\tdrop\t3\ndad_bro\tkeep\t3\nmom\tkeep\t2\nbro\tdrop\t4\nchild\tdrop\t4\n"
     ), "related samples flagged correctly"
 
 

@@ -152,7 +152,7 @@ def test_fix_ploidy_unsupported_format():
     for variant in vcf:
         with pytest.raises(ValueError):
             variant.fix_ploidy(
-                sexes=["male", "female", "male"], regions=[("1", 1000, 2000000)]
+                sexes=["male", "female", "male"], non_diploid_regions=[("1", 1000, 2000000, "M", 1)]
             )
 
 
@@ -173,7 +173,7 @@ def test_fix_ploidy():
 
     for variant in vcf:
         variant.fix_ploidy(
-            sexes=["male", "female", "male"], regions=[("1", 1000, 2000000)]
+            sexes=["male", "female", "male"], non_diploid_regions=[("1", 1000, 2000000,  "M", 1)]
         )
         assert variant.sample_data == [
             "0:9,1,3",

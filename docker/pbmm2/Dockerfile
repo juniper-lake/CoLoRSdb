@@ -10,6 +10,7 @@ ENV IMAGE_TAG "${IMAGE_TAG}"
 RUN apt-get -qq update \
 	&& apt-get -qq install \
 		wget \
+		datamash \
 	&& rm -rf /var/lib/apt/lists/*
 
 ARG PBMM2_VERSION
