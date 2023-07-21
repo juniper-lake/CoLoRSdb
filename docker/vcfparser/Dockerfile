@@ -23,9 +23,6 @@ ENV PATH "${PATH}":/opt/scripts
 ARG LOGURU_VERSION
 RUN python3 -m pip install loguru==${LOGURU_VERSION}
 
-ARG PYTEST_VERSION
-RUN python3 -m pip install pytest==${PYTEST_VERSION}
-
 ARG HTSLIB_VERSION
 RUN wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 \
 	&& tar -jxvf htslib-${HTSLIB_VERSION}.tar.bz2 --directory /opt \
