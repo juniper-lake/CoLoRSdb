@@ -95,7 +95,7 @@ task deepvariant_make_examples {
 
     Int total_deepvariant_tasks
   
-    String? deepvariant_version
+    String deepvariant_version
 
     RuntimeAttributes runtime_attributes
   }

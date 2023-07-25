@@ -16,7 +16,7 @@ workflow sample_call_variants {
 
     ReferenceData reference
     
-    String? deepvariant_version
+    String deepvariant_version
 
     RuntimeAttributes default_runtime_attributes
   }
