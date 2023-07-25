@@ -7,13 +7,19 @@ struct IndexData {
 
 struct Sample {
   String sample_id
-  Array[File] movies
+  Array[File]+ movies
+}
+
+struct AlignedSample {
+  String sample_id
+  IndexData aligned_bam
+  String sex
 }
 
 struct ReferenceData {
   String name
   IndexData fasta
-  Array[String] chromosomes
+  Array[String]+ chromosomes
   File non_diploid_regions
   File tandem_repeat_bed
   File somalier_sites_vcf

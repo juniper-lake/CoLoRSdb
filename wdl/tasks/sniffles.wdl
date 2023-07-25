@@ -14,13 +14,14 @@ task sniffles_call {
     File reference_index
     File tr_bed
 
+    Int mem_gb = 32
+
     RuntimeAttributes runtime_attributes
   }
 
   String output_filename = "~{sample_id}.~{reference_name}.sniffles.vcf"
 
   Int threads = 8
-  Int mem_gb = 4 * threads
   Int disk_size = ceil(2.5 * (size(snfs, "GB") + size(reference_fasta, "GB"))) + 20
 
   command {
@@ -30,6 +31,7 @@ task sniffles_call {
       --threads ~{threads} \
       --reference ~{reference_fasta} ~{"--tandem-repeats " + tr_bed} \
       --minsvlen 20 \
+      --mapq 20 \
       --vcf ~{output_filename} \
       --input ~{sep=' ' snfs}
   }
@@ -48,7 +50,7 @@ task sniffles_call {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/sniffles:2.0.7"
+    docker: "~{runtime_attributes.container_registry}/sniffles@sha256:6248e7da573708ac37ac42f119bba3e5b2bf0b622489730a8558c974cb9ac9f6"
   }
 }
 
@@ -98,6 +100,6 @@ task sniffles_discover {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/sniffles:2.0.7"
+    docker: "~{runtime_attributes.container_registry}/sniffles@sha256:6248e7da573708ac37ac42f119bba3e5b2bf0b622489730a8558c974cb9ac9f6"
   }
 }

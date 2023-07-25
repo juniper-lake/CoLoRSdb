@@ -13,6 +13,27 @@ workflow backend_configuration {
     String container_registry
   }
 
+  if (backend == "AnVIL") {
+    # preemptible_tries applies to failures due to preemption only
+    # max_retries applies to failures due to a nonzero rc
+    # zones determined on platform, queue_arn not used in AnVIL
+    RuntimeAttributes anvil_spot_runtime_attributes = {
+      "preemptible_tries": 3,
+      "max_retries": 3,
+      "zones": "",
+      "queue_arn": "",
+      "container_registry": container_registry
+    }
+
+    RuntimeAttributes anvil_on_demand_runtime_attributes = {
+      "preemptible_tries": 0,
+      "max_retries": 0,
+      "zones": "",
+      "queue_arn": "",
+      "container_registry": container_registry
+    }
+  }
+
   if (backend == "GCP") {
     # zones must be defined
 
@@ -97,12 +118,14 @@ workflow backend_configuration {
 
   output {
     RuntimeAttributes spot_runtime_attributes = select_first([
+      anvil_spot_runtime_attributes,
       gcp_spot_runtime_attributes,
       azure_spot_runtime_attributes,
       aws_spot_runtime_attributes,
       hpc_runtime_attributes
     ])
     RuntimeAttributes on_demand_runtime_attributes = select_first([
+      anvil_on_demand_runtime_attributes,
       gcp_on_demand_runtime_attributes,
       azure_on_demand_runtime_attributes,
       aws_on_demand_runtime_attributes,

@@ -70,7 +70,7 @@ task postprocess_joint_vcf {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser:0.1.0"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:9257074df593031ac22865587030c0ae5ac301823aa725dea8d9204af62333d1"
   }
 }
 
@@ -122,6 +122,6 @@ task merge_trgt_vcfs {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser:0.1.0"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:9257074df593031ac22865587030c0ae5ac301823aa725dea8d9204af62333d1"
   }
 }

@@ -103,7 +103,7 @@ task hificnv {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/hificnv:0.1.6"
+    docker: "~{runtime_attributes.container_registry}/hificnv@sha256:0b8d0c6263681e149f00189fa8ef1569d753be0a0907b9c6ebe41485737bad80"
   }
 }
 
@@ -153,6 +153,6 @@ task merge_hificnv_vcfs {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/hificnv:0.1.6"
+    docker: "~{runtime_attributes.container_registry}/hificnv@sha256:0b8d0c6263681e149f00189fa8ef1569d753be0a0907b9c6ebe41485737bad80"
   }
 }

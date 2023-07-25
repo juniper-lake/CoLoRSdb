@@ -5,6 +5,7 @@ version 1.0
 import "../../tasks/pbmm2.wdl" as Pbmm2
 import "../../tasks/somalier.wdl" as Somalier
 import "../../tasks/mosdepth.wdl" as Mosdepth
+import "../../tasks/samtools.wdl" as Samtools
 
 workflow cohort_align_qc {
   input {
@@ -36,11 +37,6 @@ workflow cohort_align_qc {
             reference_index = reference.fasta.index,
             runtime_attributes = default_runtime_attributes
       }
-      
-      IndexData aligned_bam = {
-        "data": pbmm2.aligned_bam,
-        "index": pbmm2.aligned_bam_index
-      }
     }
       
     # combine smrtcells stats for multiple movies
@@ -67,7 +63,7 @@ workflow cohort_align_qc {
     Boolean pass_swap = if somalier_sample_swap.min_relatedness >= min_movie_relatedness_qc then true else false
 
     # merge aligned bams
-    call Pbmm2.merge_bams {
+    call Samtools.merge_bams {
       input:
         bams = pbmm2.aligned_bam,
         output_bam_name = "~{sample.sample_id}.~{reference.name}.bam",
@@ -120,11 +116,15 @@ workflow cohort_align_qc {
     Boolean qc_pass_combined = if pass_swap[idx] && pass_relatedness && pass_sex then true else false
     Float sample_relatedness_qc_threshold = max_sample_relatedness_qc
     Float movie_relatedness_qc_threshold = min_movie_relatedness_qc
-    String min_movie_relatedness = somalier_sample_swap.min_relatedness[idx]
+    Float min_movie_relatedness = somalier_sample_swap.min_relatedness[idx]
     String n_relations = somalier_relate_samples.n_relations[idx]
 
     if (qc_pass_combined) {
-      String qc_pass_sample_id = sample_id[idx]
+      AlignedSample qc_pass_sample = object {
+        sample_id: samples[idx].sample_id,
+        aligned_bam: merged_bam[idx],
+        sex: somalier_relate_samples.inferred_sexes[idx]
+      }
     }
   }
 
@@ -156,10 +156,7 @@ workflow cohort_align_qc {
   }
 
   output {
-    Array[IndexData] aligned_bams = merged_bam
-    Array[Boolean] qc_pass = qc_pass_combined
-    Array[String] qc_pass_sample_ids = select_all(qc_pass_sample_id)
-    Array[String] inferred_sexes = somalier_relate_samples.inferred_sexes
+    Array[AlignedSample] qc_pass_samples = select_all(qc_pass_sample)
     File pairwise_relatedness = somalier_relate_samples.pairs
     File qc_summary_tsv = summarize_qc.quality_control_summary
   }
@@ -176,7 +173,7 @@ task summarize_qc {
     Array[Boolean] qc_pass_sex
     Array[Boolean] qc_pass_relatedness
     Array[Boolean] qc_pass_combined
-    Array[String] min_movie_relatedness
+    Array[Float] min_movie_relatedness
     Array[String] n_relations
     Array[String] sex
     Array[Int] n_movies
