@@ -69,7 +69,7 @@ task somalier_sample_swap {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/somalier:0.2.16"
+    docker: "~{runtime_attributes.container_registry}/somalier@sha256:5d09c9fc205ba660cc30bd07e116921ced0fe2279e3724a2c317fce9952dd483"
   }
 }
 
@@ -117,7 +117,7 @@ task somalier_extract {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/somalier:0.2.16"
+    docker: "~{runtime_attributes.container_registry}/somalier@sha256:5d09c9fc205ba660cc30bd07e116921ced0fe2279e3724a2c317fce9952dd483"
   }
 }
 
@@ -187,6 +187,6 @@ task somalier_relate_samples {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/somalier:0.2.16"
+    docker: "~{runtime_attributes.container_registry}/somalier@sha256:5d09c9fc205ba660cc30bd07e116921ced0fe2279e3724a2c317fce9952dd483"
   }
 }

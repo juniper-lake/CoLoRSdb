@@ -53,6 +53,6 @@ task trgt {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/trgt:0.4.0"
+    docker: "~{runtime_attributes.container_registry}/trgt:@sha256:daeb2d091ccf412f9ba92229cda02f110b7ec7fa31f01453796170ed62664241"
   }
 }

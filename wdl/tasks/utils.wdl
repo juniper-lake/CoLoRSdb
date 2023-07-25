@@ -37,8 +37,7 @@ task read_sample_sheet {
   >>>
 
   output {
-    Array[String] sample_ids = read_lines("sample_ids.txt")
-    Array[Array[String]] movies = read_tsv("movies.tsv")
+    Array[Pair[String,Array[String]]] samples = zip(read_lines("sample_ids.txt"), read_tsv("movies.tsv"))
   }
 
   runtime {

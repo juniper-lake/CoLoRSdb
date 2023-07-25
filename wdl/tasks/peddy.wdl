@@ -65,6 +65,6 @@ task peddy {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/peddy:0.4.8"
+    docker: "~{runtime_attributes.container_registry}/peddy@sha256:a0224eb1161a87dad49b671d5e4126fcceac3c33b1f9dffa9c600b0507ea7a75"
   }  
 }

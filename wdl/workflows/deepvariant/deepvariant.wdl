@@ -9,8 +9,8 @@ workflow deepvariant {
     String sample_id
     Array[IndexData] aligned_bams
 
-    IndexData reference_fasta
     String reference_name
+    IndexData reference_fasta
 
     String deepvariant_version
 
@@ -94,6 +94,7 @@ task deepvariant_make_examples {
     Int tasks_per_shard
 
     Int total_deepvariant_tasks
+  
     String deepvariant_version
 
     RuntimeAttributes runtime_attributes
@@ -162,6 +163,7 @@ task deepvariant_call_variants {
     Array[File] example_tfrecord_tars
 
     Int total_deepvariant_tasks
+
     String deepvariant_version
 
     RuntimeAttributes runtime_attributes
@@ -212,6 +214,7 @@ task deepvariant_postprocess_variants {
     String reference_name
 
     Int total_deepvariant_tasks
+
     String deepvariant_version
 
     RuntimeAttributes runtime_attributes

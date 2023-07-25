@@ -18,7 +18,6 @@ workflow cohort_combine_samples {
 
     Array[String] sample_ids
     Array[String] sexes
-    Array[IndexData] aligned_bams
     Array[Array[File]] pbsv_svsigs
     Array[IndexData] deepvariant_gvcfs
     Array[File] sniffles_snfs
@@ -26,6 +25,10 @@ workflow cohort_combine_samples {
     Array[IndexData?] hificnv_vcfs
 
     ReferenceData reference
+
+    Int? pbsv_call_mem_gb
+    Int? glnexus_mem_gb
+    Int? sniffles_call_mem_gb
 
     RuntimeAttributes default_runtime_attributes 
   }
@@ -35,11 +38,6 @@ workflow cohort_combine_samples {
     File deepvariant_gvcf_index = gvcf_object.index
   }
 
-  scatter (bam_object in aligned_bams) {
-    File aligned_bam = bam_object.data
-    File aligned_bam_index = bam_object.index
-  }
-
   # joint call small variants with GLnexus
   call Glnexus.glnexus {
     input:
@@ -47,6 +45,7 @@ workflow cohort_combine_samples {
       gvcfs = deepvariant_gvcf,
       gvcf_indexes = deepvariant_gvcf_index,
       reference_name = reference.name,
+      mem_gb = glnexus_mem_gb,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -72,6 +71,10 @@ workflow cohort_combine_samples {
         peddy_bin = select_first([reference.peddy_bin]),
         runtime_attributes = default_runtime_attributes
     }
+  }
+
+  scatter (idx in range(length(sample_ids))) {
+    String sample_plus_sex = "~{sample_ids[idx]}+~{sexes[idx]}"
   }
 
   # limit # of samples being routed to pbsv because it will fail with too many samples
@@ -102,12 +105,13 @@ workflow cohort_combine_samples {
           reference_name = reference.name,
           reference_fasta = reference.fasta.data,
           reference_index = reference.fasta.index,
+          mem_gb = pbsv_call_mem_gb,
           runtime_attributes = default_runtime_attributes
       }
     }
 
     # concat chromosome-specific pbsv calls into single vcf
-    call Pbsv.concat_vcfs {
+    call Bcftools.concat_vcfs {
       input:
         vcfs = pbsv_call.vcf,
         output_vcf_name = "~{cohort_id}.group_~{group_idx}.~{reference.name}.pbsv.vcf",
@@ -137,7 +141,7 @@ workflow cohort_combine_samples {
     IndexData pbsv_vcf = { 
       "data": postprocess_pbsv_vcf.postprocessed_vcf,
       "index": postprocess_pbsv_vcf.postprocessed_vcf_index 
-      }
+    }
   }
 
   # joint call structural variants with sniffles
@@ -149,6 +153,7 @@ workflow cohort_combine_samples {
       reference_fasta = reference.fasta.data,
       reference_index = reference.fasta.index,
       tr_bed = reference.tandem_repeat_bed,
+      mem_gb = sniffles_call_mem_gb,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -158,10 +163,6 @@ workflow cohort_combine_samples {
       sample_ids = sample_ids,
       non_diploid_regions = reference.non_diploid_regions,
       runtime_attributes = default_runtime_attributes
-  }
-
-  scatter (idx in range(length(sample_ids))) {
-    String sample_plus_sex = "~{sample_ids[idx]}+~{sexes[idx]}"
   }
 
   # postprocess deepvariant
@@ -232,7 +233,6 @@ workflow cohort_combine_samples {
       "index": postprocess_hificnv_vcf.postprocessed_vcf_index
     }
   }
-
 
   output {
     # VCFs
