@@ -1,0 +1,34 @@
+{
+  "sample_call_variants.sample_id": "String",
+  "sample_call_variants.aligned_bam": {
+    "data": "File",
+    "index": "File"
+  },
+  "sample_call_variants.sex": "String",
+  "sample_call_variants.deepvariant_version": "String",
+  "sample_call_variants.reference": {
+    "name": "String",
+    "fasta": {
+      "data": "File",
+      "index": "File"
+    },
+    "chromosomes": "Array[String]+",
+    "autosomes": "Array[String]+",
+    "non_diploid_regions": "File",
+    "tandem_repeat_bed": "File",
+    "somalier_sites_vcf": "File",
+    "trgt_tandem_repeat_bed": "File? (optional)",
+    "hificnv_exclude_bed": "WomCompositeType {\n data -> File\nindex -> File \n}? (optional)",
+    "hificnv_expected_bed_male": "File? (optional)",
+    "hificnv_expected_bed_female": "File? (optional)",
+    "peddy_sites": "File? (optional)",
+    "peddy_bin": "File? (optional)"
+  },
+  "sample_call_variants.default_runtime_attributes": {
+    "preemptible_tries": "Int",
+    "max_retries": "Int",
+    "zones": "String",
+    "queue_arn": "String",
+    "container_registry": "String"
+  }
+}
