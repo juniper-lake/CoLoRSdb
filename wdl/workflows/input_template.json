@@ -1,0 +1,38 @@
+{
+  "colors_cohort.cohort_id": "String",
+  "colors_cohort.sample_ids": "Array[String]+? (optional)",
+  "colors_cohort.movies": "Array[Array[File]]+? (optional)",
+  "colors_cohort.sample_sheet": "File? (optional)",
+  "colors_cohort.reference": {
+    "name": "String",
+    "fasta": {
+      "data": "File",
+      "index": "File"
+    },
+    "chromosomes": "Array[String]+",
+    "autosomes": "Array[String]+",
+    "non_diploid_regions": "File",
+    "tandem_repeat_bed": "File",
+    "somalier_sites_vcf": "File",
+    "trgt_tandem_repeat_bed": "File? (optional)",
+    "hificnv_exclude_bed": "WomCompositeType {\n data -> File\nindex -> File \n}? (optional)",
+    "hificnv_expected_bed_male": "File? (optional)",
+    "hificnv_expected_bed_female": "File? (optional)",
+    "peddy_sites": "File? (optional)",
+    "peddy_bin": "File? (optional)"
+  },
+  "colors_cohort.anonymize_output": "Boolean (optional, default = true)",
+  "colors_cohort.max_samples_pbsv_call": "Int (optional, default = 150)",
+  "colors_cohort.max_sample_relatedness_qc": "Float (optional, default = 0.125)",
+  "colors_cohort.min_movie_relatedness_qc": "Float (optional, default = 0.875)",
+  "colors_cohort.deepvariant_version": "String (optional, default = \"1.5.0\")",  
+  "colors_cohort.pbsv_call_mem_gb": "Int? (optional)",
+  "colors_cohort.glnexus_mem_gb": "Int? (optional)",
+  "colors_cohort.sniffles_call_mem_gb": "Int? (optional)",
+  "colors_cohort.backend": "String",
+  "colors_cohort.zones": "String? (optional)",
+  "colors_cohort.aws_spot_queue_arn": "String? (optional)",
+  "colors_cohort.aws_on_demand_queue_arn": "String? (optional)",
+  "colors_cohort.preemptible": "Boolean",
+  "colors_cohort.container_registry": "String (optional, default = \"quay.io/colorsdb\")",
+}
