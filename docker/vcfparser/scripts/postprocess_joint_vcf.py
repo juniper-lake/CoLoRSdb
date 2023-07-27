@@ -117,7 +117,7 @@ def postprocess_joint_vcf(
     vcf = VCFParser(vcf)
 
     if sexes:
-        if not non_diploid_regions:
+        if not non_diploid_regions_file:
             raise IOError(
                 "Sample sexes were specified but no file of haploid regions was provided."
             )
@@ -141,9 +141,12 @@ def postprocess_joint_vcf(
     # print header
     print(vcf.print_metadata(), file=file)
 
+    # print headerline
+    print(vcf.print_headerline(), file=file)
+
     # print each record with samples shuffled
     for variant in vcf:
-        if non_diploid_regions and sexes:
+        if non_diploid_regions_file and sexes:
             variant.fix_ploidy(sexes=sexes_sorted, 
                                non_diploid_regions=non_diploid_regions
                                )
