@@ -178,13 +178,13 @@ task summarize_qc {
     Array[String] sex
     Array[Int] n_movies
     Array[Float] coverage_mean
-    Array[Float] read_count
-    Array[Float] unique_read_count
+    Array[Int] read_count
+    Array[Int] unique_read_count
     Array[Float] read_quality_mean
-    Array[Float] read_quality_median
+    Array[Int] read_quality_median
     Array[Float] read_quality_stdev
     Array[Float] read_length_mean
-    Array[Float] read_length_median
+    Array[Int] read_length_median
     Array[Float] read_length_stdev
 
     RuntimeAttributes runtime_attributes

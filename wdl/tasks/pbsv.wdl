@@ -27,11 +27,11 @@ task pbsv_discover {
       --region ~{region} \
       --tandem-repeats ~{tandem_repeat_bed} \
       ~{bam} \
-      ~{prefix}.{region}.svsig.gz
+      ~{prefix}.~{region}.svsig.gz
     >>>
 
   output {
-    File svsig = "~{prefix}.{region}.svsig.gz"
+    File svsig = "~{prefix}.~{region}.svsig.gz"
   }
 
   runtime {

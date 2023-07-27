@@ -20,6 +20,7 @@ struct ReferenceData {
   String name
   IndexData fasta
   Array[String]+ chromosomes
+  Array[String]+ autosomes
   File non_diploid_regions
   File tandem_repeat_bed
   File somalier_sites_vcf

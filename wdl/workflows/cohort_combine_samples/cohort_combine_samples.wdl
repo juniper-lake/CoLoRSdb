@@ -55,7 +55,7 @@ workflow cohort_combine_samples {
       vcf = glnexus.vcf,
       sample_ids = sample_ids,
       reference = reference.fasta.data,
-      non_diploid_regions = reference.non_diploid_regions,
+      autosomes = reference.autosomes,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -79,12 +79,14 @@ workflow cohort_combine_samples {
 
   # limit # of samples being routed to pbsv because it will fail with too many samples
   # get max size of samples for pbsv to process
-  Int n_pbsv_call_groups = ceil(length(sample_ids)/max_samples_pbsv_call)
+  # the following commented line didn't work (always rounded down despite ceil function)
+  # Int n_pbsv_call_groups  = ceil(length(sample_ids)/max_samples_pbsv_call)
+  Int n_pbsv_call_groups  = if length(sample_ids) % max_samples_pbsv_call > 0 then floor(length(sample_ids)/max_samples_pbsv_call) + 1 else length(sample_ids)/max_samples_pbsv_call
 
-  scatter (group_idx in range(n_pbsv_call_groups-1)) {
+  scatter (group_idx in range(n_pbsv_call_groups)) {
     # subsample based on sample index
     scatter (sample_idx in range(length(sample_ids))) {
-      Int sample_group = sample_idx - (group_idx*max_samples_pbsv_call)
+      Int sample_group = sample_idx % n_pbsv_call_groups
       if (sample_group == group_idx) {
         Array[File] group_svsigs = pbsv_svsigs[sample_idx]
         String group_sample_ids = sample_ids[sample_idx]
@@ -123,7 +125,7 @@ workflow cohort_combine_samples {
       input:
         vcf = concat_vcfs.concatenated_vcf,
         sample_ids = sample_ids,
-        non_diploid_regions = reference.non_diploid_regions,
+        autosomes = reference.autosomes,
         runtime_attributes = default_runtime_attributes
     }
 
@@ -161,7 +163,7 @@ workflow cohort_combine_samples {
     input:
       vcf = sniffles_call.vcf,
       sample_ids = sample_ids,
-      non_diploid_regions = reference.non_diploid_regions,
+      autosomes = reference.autosomes,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -240,7 +242,7 @@ workflow cohort_combine_samples {
       "data": postprocess_deepvariant_vcf.postprocessed_vcf,
       "index": postprocess_deepvariant_vcf.postprocessed_vcf_index
       }
-    Array[IndexData] cohort_pbsv_vcfs = pbsv_vcf
+    Array[IndexData]+ cohort_pbsv_vcfs = pbsv_vcf
     IndexData cohort_sniffles_vcf = { 
       "data": postprocess_sniffles_vcf.postprocessed_vcf,
       "index": postprocess_sniffles_vcf.postprocessed_vcf_index
@@ -249,11 +251,11 @@ workflow cohort_combine_samples {
     IndexData? cohort_hificnv_vcf = cohort_hificnv
 
     # Logs
-    Array[Array[File]] pbsv_call_logs = pbsv_call.log # for testing memory usage
+    Array[Array[File]]+ pbsv_call_logs = pbsv_call.log # for testing memory usage
     
     # VCF stats
     File cohort_deepvariant_vcf_stats = small_variant_stats.stats
-    Array[File] cohort_pbsv_vcf_stats = pbsv_stats.stats
+    Array[File]+ cohort_pbsv_vcf_stats = pbsv_stats.stats
     File cohort_sniffles_vcf_stats = sniffles_stats.stats
     
     # Ancestry when peddy is run

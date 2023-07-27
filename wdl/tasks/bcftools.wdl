@@ -10,7 +10,7 @@ task small_variant_stats {
     Array[String] sample_ids
 
     File reference
-    File non_diploid_regions
+    Array[String] autosomes
 
     RuntimeAttributes runtime_attributes
   }
@@ -29,14 +29,14 @@ task small_variant_stats {
     bcftools stats \
       --threads ~{threads - 1} \
       --samples ~{sep="," sample_ids} \
-      --targets-file ^~{non_diploid_regions} \
+      --targets ~{sep="," autosomes} \
       --fasta-ref ~{reference} \
       ~{vcf} \
-    > ~{vcf_basename}.diploid_regions.stats.txt
+    > ~{vcf_basename}.autosomes.stats.txt
   >>>
 
   output {
-    File stats = "~{vcf_basename}.diploid_regions.stats.txt"
+    File stats = "~{vcf_basename}.autosomes.stats.txt"
   }
 
   runtime {
@@ -58,7 +58,7 @@ task structural_variant_stats {
     File vcf
     Array[String] sample_ids
 
-    File non_diploid_regions
+    Array[String] autosomes
 
     RuntimeAttributes runtime_attributes
   }
@@ -75,8 +75,7 @@ task structural_variant_stats {
 
     for SAMPLE in ~{sep=" " sample_ids}; do
       bcftools query \
-        --targets-file ^~{non_diploid_regions} \
-        --exclude 'GT="miss"' \
+        --targets ~{sep="," autosomes} \
         --samples $SAMPLE \
         --format '%SVTYPE\t[%GT]\n]' \
         ~{vcf} > ~{vcf_basename}.$SAMPLE.txt
@@ -84,12 +83,12 @@ task structural_variant_stats {
       cat ~{vcf_basename}.$SAMPLE.txt \
         | datamash -s groupby 1,2 count 1 \
         | awk -v OFS="\t" -v sample=$SAMPLE '{print sample,$0}' \
-        >> ~{vcf_basename}.diploid_regions.stats.tsv
+        >> ~{vcf_basename}.autosomes.stats.tsv
     done
   >>>
 
   output {
-    File stats = "~{vcf_basename}.diploid_regions.stats.tsv"
+    File stats = "~{vcf_basename}.autosomes.stats.tsv"
   }
 
   runtime {

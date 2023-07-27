@@ -48,7 +48,7 @@ task hificnv {
 
     # because hificnv outputs symbolic alleles only (<DEL> and <DUP>), CNVs starting at the same position
     # but possessing different length get merged and the QUAL + INFO fields are lost
-    # therefore we move QUAL to FORMAT/CNQ and 
+    # therefore we move QUAL to FORMAT/CNQ and add an ID field to each variant on which to merge
 
     bcftools --version
     bgzip --version
@@ -73,9 +73,9 @@ task hificnv {
       -x QUAL \
       -a annot.txt.gz \
       -h hdr.txt \
-      -c CHROM,POS,REF,ALT,FORMAT/CNQ \
-      hificnv.~{sample_id}.vcf.gz \
-      > ~{sample_id}.~{reference_name}.hificnv.vcf
+      -c CHROM,POS,REF,ALT,FORMAT/CNQ,ID \
+      -o ~{sample_id}.~{reference_name}.hificnv.vcf \
+      hificnv.~{sample_id}.vcf.gz
 
     # compress 
     bgzip \
@@ -103,7 +103,7 @@ task hificnv {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/hificnv@sha256:0b8d0c6263681e149f00189fa8ef1569d753be0a0907b9c6ebe41485737bad80"
+    docker: "~{runtime_attributes.container_registry}/hificnv@sha256:c8b164686c7e21cf4ecdc3b56f3c3303471df0582e409682bd824bd7a99db96a"
   }
 }
 
@@ -153,6 +153,6 @@ task merge_hificnv_vcfs {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/hificnv@sha256:0b8d0c6263681e149f00189fa8ef1569d753be0a0907b9c6ebe41485737bad80"
+    docker: "~{runtime_attributes.container_registry}/hificnv@sha256:c8b164686c7e21cf4ecdc3b56f3c3303471df0582e409682bd824bd7a99db96a"
   }
 }
