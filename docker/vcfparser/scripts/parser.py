@@ -203,6 +203,7 @@ class VariantRecord(object):
                         regions: list[tuple[str, int, int, str, int]]
                         ):
         """Check if variant is in any of the provided regions."""
+        #TODO also use length or end position to check if variant is in region, not just start position
         male = ["male", "m", "xy"]
         female = ["female", "f", "xx"]
         valid_sex = male + female
@@ -218,7 +219,7 @@ class VariantRecord(object):
                 else:
                     target_sex = "female"
                 if ploidy not in [0,1]:
-                    raise ValueError("Ploidy in non-diploid regions should be less than 0 or 1.")
+                    raise ValueError("Ploidy in non-diploid regions should be 0 or 1.")
                 ploidy_dict |= {target_sex: ploidy}
         return ploidy_dict
     
@@ -245,7 +246,6 @@ class VariantRecord(object):
                     logger.critical("Genotype is already haploid.")
             else:
                 # update PL, GQ, and GT
-                
                 num_alleles = len(self.alts) + 1
                 un_normalized_probs = [10 ** (pl / -10) for pl in pls]
                 homozygous_un_normalized_probs = []
@@ -283,18 +283,19 @@ class VariantRecord(object):
             if ads.count(max_ad) != 1:
                 gt = "."
             else:
-                gt = ads.index(max_ad)
-                sample_dict |= {"GT": str(gt)}
+                gt = "." if sample_dict["GT"] == "./." else ads.index(max_ad)
+            sample_dict |= {"GT": str(gt)}
         # sniffles
         elif ("DR" in format) and ("DV" in format):
             logger.debug(f"Using DR+DV to fix ploidy at {self.chrom}:{self.pos}")
             ads = [int(sample_dict["DR"]), int(sample_dict["DV"])]
             max_ad = max(ads)
-            if ads.count(max_ad) == 1:
+            # genotype unknown if AD is tied, otherwise highest AD
+            if ads.count(max_ad) != 1:
                 gt = "."
             else:
-                gt = ads.index(max_ad)
-                sample_dict |= {"GT": str(gt)}
+                gt = "." if sample_dict["GT"] == "./." else ads.index(max_ad)
+            sample_dict |= {"GT": str(gt)}
         else:
             raise ValueError(f"Format {format} is not supported for fixing ploidy.")
         new_sample = [sample_dict[key] for key in format]
