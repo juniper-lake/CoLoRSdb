@@ -15,15 +15,6 @@ workflow colors_cohort {
 
     ReferenceData reference
 
-    Boolean anonymize_output = true
-    Int max_samples_pbsv_call = 150
-
-    # quality control
-    Float max_sample_relatedness_qc = 0.125
-    Float min_movie_relatedness_qc = 0.875
-
-    String deepvariant_version = "1.5.0"
-
     # memory configuration
     Int? pbsv_call_mem_gb
     Int? glnexus_mem_gb
@@ -35,8 +26,15 @@ workflow colors_cohort {
     String? aws_spot_queue_arn
     String? aws_on_demand_queue_arn
     Boolean preemptible
-    String container_registry = "quay.io/colorsdb"
   }
+
+  # these inputs are not in the input section because should not be changed for data contributing to CoLoRSdb
+  String container_registry = "quay.io/colorsdb"
+  Boolean anonymize_output = true
+  Int max_samples_pbsv_call = 150
+  Float max_sample_relatedness_qc = 0.125
+  Float min_movie_relatedness_qc = 0.875
+  String deepvariant_version = "1.5.0"
 
   call BackendConfiguration.backend_configuration {
     input:
@@ -49,6 +47,7 @@ workflow colors_cohort {
 
   RuntimeAttributes default_runtime_attributes = if preemptible then backend_configuration.spot_runtime_attributes else backend_configuration.on_demand_runtime_attributes
 
+  # read sample sheet if provided
   if (defined(sample_sheet)) {
     call Utils.read_sample_sheet {
       input:
@@ -64,7 +63,8 @@ workflow colors_cohort {
     }
   }
 
-  # this makes sure arrays are the same length
+  # if no sample sheet, get sample_ids and movies
+  # this scatter gather makes sure arrays are the same length
   if (!defined(sample_sheet)) {
     scatter (idx in range(length(select_first([sample_ids])))) {
       Sample array_samples = object {
@@ -76,6 +76,7 @@ workflow colors_cohort {
   
   Array[Sample] samples = select_first([array_samples, sample_sheet_samples])
 
+  # require at least 2 samples to run alignment and QC
   if (length(samples) > 1) {
     call CohortAlignQC.cohort_align_qc {
       input:
@@ -130,6 +131,7 @@ workflow colors_cohort {
   }
 
   output {
+    # messages
     String sample_size_message = if (length(samples) < 2) then "At least two samples are required to run the workflow, but only ~{length(samples)} samples were included in cohort." else "~{length(samples)} samples are included in alignment and QC steps."
     String qc_message = if (length(qc_pass_samples) < 2) then "At least two samples are required to pass QC, but only ~{length(qc_pass_samples)} samples passed QC." else "~{length(qc_pass_samples)} samples out of ~{length(samples)} samples passed QC and will be used for variant calling."
 

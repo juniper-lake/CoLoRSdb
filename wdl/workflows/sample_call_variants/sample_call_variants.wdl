@@ -98,7 +98,7 @@ workflow sample_call_variants {
 
   output {
     File sniffles_snf = sniffles_discover.snf
-    Array[File] pbsv_svsigs = pbsv_discover.svsig
+    Array[File]+ pbsv_svsigs = pbsv_discover.svsig
     IndexData deepvariant_gvcf = deepvariant.gvcf
     File? trgt_vcf = trgt.repeat_vcf
     IndexData? hificnv_vcf = hificnv_indexed_vcf

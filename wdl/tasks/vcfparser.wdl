@@ -23,7 +23,7 @@ task postprocess_joint_vcf {
   Int threads = 4
   Int disk_size = ceil((size(vcf, "GB")) * 3.5 + 20) 
   
-  command {
+  command <<<
     set -euo pipefail
 
     # if you don't need to anonymize output or fix ploidy, then just zip and index
@@ -38,10 +38,15 @@ task postprocess_joint_vcf {
           > ~{outfile}.gz
       fi
     else
+      if ~{defined(sample_plus_sexes)}; then
+        SAMPLE_SEXES="--sample_sexes ~{sep=' ' sample_plus_sexes}"
+      else
+        SAMPLE_SEXES=""
+      fi
       postprocess_joint_vcf.py \
         ~{anonymize_prefix} \
-        --non_diploid_regions ~{non_diploid_regions} \
-        --sample_sexes ~{sep=" " sample_plus_sexes} \
+        ~{"--non_diploid_regions " + non_diploid_regions} \
+        $SAMPLE_SEXES \
         --outfile ~{outfile} \
         ~{vcf}
 
@@ -53,7 +58,7 @@ task postprocess_joint_vcf {
     tabix \
       --preset vcf \
       ~{outfile}.gz   
-  }
+  >>>
 
   output {
     File postprocessed_vcf = "~{outfile}.gz"
@@ -70,7 +75,7 @@ task postprocess_joint_vcf {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:9257074df593031ac22865587030c0ae5ac301823aa725dea8d9204af62333d1"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:5a56ab3ea7a930fe023462a0e40ab6c0526eba09b21b1500d6117a99f7047b3e"
   }
 }
 
@@ -122,6 +127,6 @@ task merge_trgt_vcfs {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:9257074df593031ac22865587030c0ae5ac301823aa725dea8d9204af62333d1"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:5a56ab3ea7a930fe023462a0e40ab6c0526eba09b21b1500d6117a99f7047b3e"
   }
 }
