@@ -25,6 +25,8 @@ task somalier_sample_swap {
   command<<<
     set -euo pipefail
 
+    export SOMALIER_REPORT_ALL_PAIRS=1
+
     # get minimum pairwise relatedness (output 1 if there's only one movie)
     if [ ~{n_files} -eq 1 ]; then
       echo "1.0" > min_relatedness.txt
@@ -137,7 +139,9 @@ task somalier_relate_samples {
 
   command<<<
     set -euo pipefail
-    
+
+    export SOMALIER_REPORT_ALL_PAIRS=1
+
     # calculate relatedness among samples
     somalier relate \
       --min-depth=4 \
@@ -168,7 +172,7 @@ task somalier_relate_samples {
   >>>
 
   output {
-    File groups = "~{cohort_id}.somalier.groups.tsv"
+    File? groups = "~{cohort_id}.somalier.groups.tsv"
     File html = "~{cohort_id}.somalier.html"
     File pairs = "~{cohort_id}.somalier.pairs.tsv"
     File samples = "~{cohort_id}.somalier.samples.tsv"
