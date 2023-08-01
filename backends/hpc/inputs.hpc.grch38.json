@@ -58,7 +58,7 @@
       "chr21",
       "chr22"
     ],
-    "non_diploid_regions": "<local_path_prefix>/colorsdb_resources/GRCh38/vcfparser.GRCh38.non_par.txt",
+    "non_diploid_regions": "<local_path_prefix>/colorsdb_resources/GRCh38/vcfparser.GRCh38.ploidy.txt",
     "hificnv_exclude_bed": {
       "data": "<local_path_prefix>/colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.common_50.hg38.bed.gz",
       "index": "<local_path_prefix>/colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.common_50.hg38.bed.gz.tbi"
