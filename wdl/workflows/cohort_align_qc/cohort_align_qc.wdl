@@ -27,9 +27,19 @@ workflow cohort_align_qc {
       # are not unique or don't follow HiFi naming convention
       String movie_name = sub(basename(sample.movies[idx]), "\\..*", "_movie~{idx}")
 
+      # check if BAMs are already aligned, ignore FASTQs
+      if (basename(sample.movies[idx], ".bam") != basename(sample.movies[idx])) {
+        call Samtools.reset_aligned_bam {
+          input:
+            bam = sample.movies[idx],
+            runtime_attributes = default_runtime_attributes
+        }
+      }
+
+      # align each movie
       call Pbmm2.pbmm2 {
           input: 
-            movie = sample.movies[idx],
+            movie = select_first([reset_aligned_bam.unaligned_bam, sample.movies[idx]]),
             out_prefix = "~{sample.sample_id}.~{movie_name}",
             sample_id = sample.sample_id,
             reference_name = reference.name,
