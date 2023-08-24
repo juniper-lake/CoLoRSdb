@@ -228,7 +228,7 @@ class VariantRecord(object):
         format = self.format.split(":")
         sample = self.sample_data[sample_idx].split(":")
         sample_dict = dict(zip(format, sample))
-        sample_dict |= {"GT": "./."}
+        sample_dict |= {"GT": "."}
         new_sample = [sample_dict[key] for key in format]
         return new_sample
 
@@ -266,12 +266,28 @@ class VariantRecord(object):
                 min_pl = min(haploid_pls)
                 gq = 10000
                 haploid_pls = [pl - min_pl for pl in haploid_pls]
-                for i, pl in enumerate(haploid_pls):
-                    if pl == 0:
+                
+                # get new genotype
+                # if all PLs are 0 but GT != ., make call with AD
+                if all(pl == 0 for pl in haploid_pls):
+                    logger.warning(f"All PLs are 0 at {self.chrom}:{self.pos}. Using AD to make call.")
+                    ads = [int(ad) for ad in sample_dict["AD"].split(",")]
+                    max_ad = max(ads)
+                    # genotype unknown if AD is tied, otherwise highest AD
+                    if ads.count(max_ad) != 1:
+                        gt = "."
+                    else:
                         # maintain a no call
-                        gt = "." if sample_dict["GT"] == "./." else i
-                    elif pl < gq:
-                        gq = pl
+                        gt = "." if sample_dict["GT"] == "./." else ads.index(max_ad)
+                    gq = sample_dict["GQ"]
+                # otherwise, use PLs to make call
+                else:           
+                    for i, pl in enumerate(haploid_pls):
+                        if pl == 0:
+                            # maintain a no call
+                            gt = "." if sample_dict["GT"] == "./." else i
+                        elif pl < gq:
+                            gq = pl
                 haploid_pls = [str(pl) for pl in haploid_pls]
                 sample_dict |= {"PL": ",".join(haploid_pls), "GT": str(gt), "GQ": str(gq)}
         # pbsv
@@ -296,6 +312,10 @@ class VariantRecord(object):
             else:
                 gt = "." if sample_dict["GT"] == "./." else ads.index(max_ad)
             sample_dict |= {"GT": str(gt)}
+        # hificnv
+        elif ("CNQ" in format) and ("CN" in format):
+            logger.debug(f"Setting GT to 1 at {self.chrom}:{self.pos}")
+            sample_dict |= {"GT": "1"}
         else:
             raise ValueError(f"Format {format} is not supported for fixing ploidy.")
         new_sample = [sample_dict[key] for key in format]
@@ -330,7 +350,6 @@ class VariantRecord(object):
                 if "female" in ploidy_dict:
                     if sex in ["f", "female", "xx"]:
                         if ploidy_dict["female"] == 1:
-                            logger.warning("Are you sure there should be haploid regions specified for females?")
                             new_sample = self.convert_to_haploid(sample_idx)
                             self.sample_data[sample_idx] = ":".join(new_sample)
                         else:
