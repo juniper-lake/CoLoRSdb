@@ -14,19 +14,22 @@ task glnexus {
 
     File? regions_bed
 
-    Int mem_gb = 30
+    Int mem_gb = 156
 
     RuntimeAttributes runtime_attributes
   }
 
   Int threads = 24
-  Int disk_size = ceil((size(gvcfs[0], "GB") * length(gvcfs)) * 2 + 100)
+  Int disk_size = ceil((size(gvcfs, "GB")) * 2 + 100)
 
   String output_prefix =  "~{cohort_id}.~{reference_name}.deepvariant.glnexus"
 
   command <<<
     set -euo pipefail
 
+    # increase open file limit
+    ulimit -Sn 65536
+    
     glnexus_cli \
       --threads ~{threads} \
       --mem-gbytes ~{mem_gb} \
@@ -54,7 +57,7 @@ task glnexus {
     cpu: threads
     memory: "~{mem_gb} GB"
     disk: "~{disk_size} GB"
-    disks: "local-disk ~{disk_size} HDD"
+    disks: "local-disk ~{disk_size} SSD"
     preemptible: runtime_attributes.preemptible_tries
     maxRetries: runtime_attributes.max_retries
     awsBatchRetryAttempts: runtime_attributes.max_retries

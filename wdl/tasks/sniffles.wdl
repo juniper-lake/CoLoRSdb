@@ -14,7 +14,7 @@ task sniffles_call {
     File reference_index
     File tr_bed
 
-    Int mem_gb = 32
+    Int mem_gb = 128
 
     RuntimeAttributes runtime_attributes
   }
@@ -26,6 +26,9 @@ task sniffles_call {
 
   command {
     set -euo pipefail
+    
+    # increase open file limit
+    ulimit -Sn 65536
     
     sniffles \
       --threads ~{threads} \

@@ -70,6 +70,9 @@ task pbsv_call {
   command<<<
     set -euo pipefail
 
+    # increase open file limit
+    ulimit -Sn 65536
+    
     pbsv call \
       --log-level INFO \
       --hifi \
