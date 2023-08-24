@@ -9,6 +9,7 @@ import "../../tasks/hificnv.wdl" as Hificnv
 import "../../tasks/peddy.wdl" as Peddy
 import "../../tasks/vcfparser.wdl" as Vcfparser
 import "../../tasks/bcftools.wdl" as Bcftools
+import "../../tasks/htslib.wdl" as Htslib
 
 workflow cohort_combine_samples {
   input {
@@ -31,6 +32,7 @@ workflow cohort_combine_samples {
     Int? sniffles_call_mem_gb
 
     RuntimeAttributes default_runtime_attributes 
+    RuntimeAttributes on_demand_runtime_attributes
   }
 
   scatter (gvcf_object in deepvariant_gvcfs) {
@@ -108,7 +110,7 @@ workflow cohort_combine_samples {
           reference_fasta = reference.fasta.data,
           reference_index = reference.fasta.index,
           mem_gb = pbsv_call_mem_gb,
-          runtime_attributes = default_runtime_attributes
+          runtime_attributes = on_demand_runtime_attributes
       }
     }
 
@@ -116,23 +118,28 @@ workflow cohort_combine_samples {
     call Bcftools.concat_vcfs {
       input:
         vcfs = pbsv_call.vcf,
-        output_vcf_name = "~{cohort_id}.group_~{group_idx}.~{reference.name}.pbsv.vcf",
+        output_prefix = "~{cohort_id}.group_~{group_idx}.~{reference.name}.pbsv",
         runtime_attributes = default_runtime_attributes
     }
 
     # pbsv stats per sample
     call Bcftools.structural_variant_stats as pbsv_stats {
       input:
-        vcf = concat_vcfs.concatenated_vcf,
+        vcf = concat_vcfs.concatenated_zipped_vcf,
         sample_ids = sample_ids,
         autosomes = reference.autosomes,
         runtime_attributes = default_runtime_attributes
     }
 
+    IndexData pbsv_vcf = { 
+      "data": concat_vcfs.concatenated_zipped_vcf,
+      "index": concat_vcfs.concatenated_zipped_vcf_index 
+    }
+
     # postprocess pbsv
     call Vcfparser.postprocess_joint_vcf as postprocess_pbsv_vcf {
       input:
-        vcf = concat_vcfs.concatenated_vcf,
+        vcf = concat_vcfs.concatenated_zipped_vcf,
         cohort_id = cohort_id,
         anonymize_output = anonymize_output,
         sample_plus_sexes = sample_plus_sex,
@@ -140,7 +147,7 @@ workflow cohort_combine_samples {
         runtime_attributes = default_runtime_attributes
     }
   
-    IndexData pbsv_vcf = { 
+    IndexData postprocessed_pbsv_vcf = { 
       "data": postprocess_pbsv_vcf.postprocessed_vcf,
       "index": postprocess_pbsv_vcf.postprocessed_vcf_index 
     }
@@ -156,6 +163,12 @@ workflow cohort_combine_samples {
       reference_index = reference.fasta.index,
       tr_bed = reference.tandem_repeat_bed,
       mem_gb = sniffles_call_mem_gb,
+      runtime_attributes = default_runtime_attributes
+  }
+
+  call Htslib.zip_index_vcf as zip_index_sniffles {
+    input:
+      vcf = sniffles_call.vcf,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -221,6 +234,11 @@ workflow cohort_combine_samples {
         reference_name = reference.name,
         runtime_attributes = default_runtime_attributes
     }
+    
+    IndexData cohort_hificnv = {
+      "data": merge_hificnv_vcfs.merged_cnv_vcf,
+      "index": merge_hificnv_vcfs.merged_cnv_vcf_index
+    }
 
     call Vcfparser.postprocess_joint_vcf as postprocess_hificnv_vcf {
       input:
@@ -230,24 +248,37 @@ workflow cohort_combine_samples {
         runtime_attributes = default_runtime_attributes
     }
 
-    IndexData cohort_hificnv = {
+    IndexData postprocessed_cohort_hificnv = {
       "data": postprocess_hificnv_vcf.postprocessed_vcf,
       "index": postprocess_hificnv_vcf.postprocessed_vcf_index
     }
   }
 
   output {
-    # VCFs
-    IndexData cohort_deepvariant_vcf = { 
+    # postprocessed VCFs
+    IndexData cohort_deepvariant_postprocessed_vcf = { 
       "data": postprocess_deepvariant_vcf.postprocessed_vcf,
       "index": postprocess_deepvariant_vcf.postprocessed_vcf_index
       }
-    Array[IndexData]+ cohort_pbsv_vcfs = pbsv_vcf
-    IndexData cohort_sniffles_vcf = { 
+    Array[IndexData]+ cohort_pbsv_postprocessed_vcfs = postprocessed_pbsv_vcf
+    IndexData cohort_sniffles_postprocessed_vcf = { 
       "data": postprocess_sniffles_vcf.postprocessed_vcf,
       "index": postprocess_sniffles_vcf.postprocessed_vcf_index
       }
-    IndexData? cohort_trgt_vcf = cohort_trgt
+    IndexData? cohort_trgt_postprocessed_vcf = cohort_trgt
+    IndexData? cohort_hificnv_postprocessed_vcf = postprocessed_cohort_hificnv
+
+    # original VCFs, so if anonymize_output=false we can access VCFs without ploidy changes
+    # not relevant for TRGT because ploidy correction is done by TRGT itself
+    IndexData cohort_deepvariant_vcf = { 
+      "data": glnexus.vcf,
+      "index": glnexus.vcf_index
+      }
+    Array[IndexData]+ cohort_pbsv_vcfs = pbsv_vcf
+    IndexData cohort_sniffles_vcf = { 
+      "data": zip_index_sniffles.zipped_vcf,
+      "index": zip_index_sniffles.zipped_vcf_index
+      }
     IndexData? cohort_hificnv_vcf = cohort_hificnv
 
     # Logs
