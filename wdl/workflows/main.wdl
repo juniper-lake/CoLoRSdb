@@ -14,6 +14,7 @@ workflow colors_cohort {
     File? sample_sheet
 
     ReferenceData reference
+    Boolean anonymize_output = true
 
     # memory configuration
     Int? pbsv_call_mem_gb
@@ -30,10 +31,9 @@ workflow colors_cohort {
 
   # these inputs are not in the input section because should not be changed for data contributing to CoLoRSdb
   String container_registry = "quay.io/colorsdb"
-  Boolean anonymize_output = true
   Int max_samples_pbsv_call = 150
   Float max_sample_relatedness_qc = 0.125
-  Float min_movie_relatedness_qc = 0.875
+  Float min_movie_relatedness_qc = 0.7
   String deepvariant_version = "1.5.0"
 
   call BackendConfiguration.backend_configuration {
@@ -126,7 +126,15 @@ workflow colors_cohort {
         pbsv_call_mem_gb = pbsv_call_mem_gb,
         glnexus_mem_gb = glnexus_mem_gb,
         sniffles_call_mem_gb = sniffles_call_mem_gb,
-        default_runtime_attributes = default_runtime_attributes
+        default_runtime_attributes = default_runtime_attributes,
+        on_demand_runtime_attributes = backend_configuration.on_demand_runtime_attributes
+    }
+  
+    if (!anonymize_output) {
+      IndexData? original_deepvariant_vcf = cohort_combine_samples.cohort_deepvariant_vcf
+      Array[IndexData]? original_pbsv_vcfs = cohort_combine_samples.cohort_pbsv_vcfs
+      IndexData? original_sniffles_vcf = cohort_combine_samples.cohort_sniffles_vcf
+      IndexData? original_hificnv_vcf = cohort_combine_samples.cohort_hificnv_vcf
     }
   }
 
@@ -139,12 +147,18 @@ workflow colors_cohort {
     File? qc_summary_tsv = cohort_align_qc.qc_summary_tsv
     File? pairwise_relatedness_tsv = cohort_align_qc.pairwise_relatedness
 
-    # vcfs
-    IndexData? cohort_deepvariant_vcf = cohort_combine_samples.cohort_deepvariant_vcf
-    Array[IndexData]? cohort_pbsv_vcf = cohort_combine_samples.cohort_pbsv_vcfs
-    IndexData? cohort_sniffles_vcf = cohort_combine_samples.cohort_sniffles_vcf
-    IndexData? cohort_trgt_vcf = cohort_combine_samples.cohort_trgt_vcf
-    IndexData? cohort_hificnv_vcf = cohort_combine_samples.cohort_hificnv_vcf
+    # postprocessed vcfs
+    IndexData? cohort_deepvariant_postprocessed_vcf = cohort_combine_samples.cohort_deepvariant_postprocessed_vcf
+    Array[IndexData]? cohort_pbsv_postprocessed_vcfs = cohort_combine_samples.cohort_pbsv_postprocessed_vcfs
+    IndexData? cohort_sniffles_postprocessed_vcf = cohort_combine_samples.cohort_sniffles_postprocessed_vcf
+    IndexData? cohort_trgt_postprocessed_vcf = cohort_combine_samples.cohort_trgt_postprocessed_vcf
+    IndexData? cohort_hificnv_postprocessed_vcf = cohort_combine_samples.cohort_hificnv_postprocessed_vcf
+
+    # original vcfs
+    IndexData? cohort_deepvariant_vcf = original_deepvariant_vcf
+    Array[IndexData]? cohort_pbsv_vcfs = original_pbsv_vcfs
+    IndexData? cohort_sniffles_vcf = original_sniffles_vcf
+    IndexData? cohort_hificnv_vcf = original_hificnv_vcf
 
     # vcf stats
     File? cohort_deepvariant_vcf_stats = cohort_combine_samples.cohort_deepvariant_vcf_stats

@@ -125,6 +125,9 @@ task merge_hificnv_vcfs {
   command {
     set -euo pipefail
 
+    # increase open file limit
+    ulimit -Sn 65536
+    
     bcftools --version
 
     bcftools merge \
@@ -137,10 +140,15 @@ task merge_hificnv_vcfs {
     bgzip \
       --threads ~{threads} \
       ~{cohort_id}.~{reference_name}.hificnv.vcf
+    
+    tabix \
+      --preset vcf \
+      ~{cohort_id}.~{reference_name}.hificnv.vcf.gz
   }
 
   output {
     File merged_cnv_vcf = "~{cohort_id}.~{reference_name}.hificnv.vcf.gz"
+    File merged_cnv_vcf_index = "~{cohort_id}.~{reference_name}.hificnv.vcf.gz.tbi"
   }
 
   runtime {
