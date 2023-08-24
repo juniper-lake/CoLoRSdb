@@ -19,7 +19,7 @@ task somalier_sample_swap {
   }
 
   Int n_files = length(bams)
-  Int disk_size = 20
+  Int disk_size = ceil((size(bams, "GB") + size(reference_fasta, "GB") + size(somalier_sites_vcf, "GB")) * 2.5 + 5)
   Int threads = n_files
 
   command<<<
@@ -46,7 +46,8 @@ task somalier_sample_swap {
 
       # calculate relatedness among movies
       somalier relate \
-        --min-depth=4 \
+        --min-depth=5 \
+        --min-ab=0.1 \
         --output-prefix=~{sample_id}.somalier \
         extracted/*.somalier
       awk 'NR>1 {print $3}' ~{sample_id}.somalier.pairs.tsv | sort -n | head -1 > min_relatedness.txt
@@ -142,9 +143,13 @@ task somalier_relate_samples {
 
     export SOMALIER_REPORT_ALL_PAIRS=1
 
+    # increase open file limit
+    ulimit -Sn 65536
+    
     # calculate relatedness among samples
     somalier relate \
-      --min-depth=4 \
+      --min-depth=6 \
+      --min-ab=0.2 \
       --output-prefix=~{cohort_id}.somalier \
       --infer \
       ~{sep=" " extracted_sites}

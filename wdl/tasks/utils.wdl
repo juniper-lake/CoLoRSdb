@@ -14,8 +14,8 @@ task read_sample_sheet {
   Int disk_size = ceil(size(sample_sheet)) + 20
 
   command <<<
-    grep -v "^#" ~{sample_sheet} | cut -f1 > sample_ids.txt
-    grep -v "^#" ~{sample_sheet} | cut -f2 | sed 's/,/\t/g' > movies.tsv
+    grep -v "^#" ~{sample_sheet} | grep -v -e '^$' | cut -f1 > sample_ids.txt
+    grep -v "^#" ~{sample_sheet} | grep -v -e '^$'| cut -f2 | sed 's/,/\t/g' > movies.tsv
     
     # are the number of rows the same for each column
     if [ "$(wc -l < sample_ids.txt)" -ne "$(wc -l < movies.tsv)" ]; then 

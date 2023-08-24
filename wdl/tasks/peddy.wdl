@@ -25,6 +25,9 @@ task peddy {
   command <<<
     set -euo pipefail
 
+    # increase open file limit
+    ulimit -Sn 65536
+    
     # make ped file
     for SAMPLE_ID in ~{sep=" " sample_ids}; do
       echo -e "${SAMPLE_ID}\t${SAMPLE_ID}\t0\t0\t0\t0" >> ~{cohort_id}.ped

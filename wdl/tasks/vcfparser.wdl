@@ -17,8 +17,7 @@ task postprocess_joint_vcf {
 
   String vcf_basename = basename(basename(vcf, ".gz"), ".vcf")
   String anonymize_prefix = if (anonymize_output) then "--anonymize_prefix ~{cohort_id}" else ""
-  String outfile = if (anonymize_output) then "~{vcf_basename}.anonymized.vcf" else "~{vcf_basename}.vcf"
-  String just_zip_index = if (anonymize_output) || defined(non_diploid_regions) || defined(sample_plus_sexes) then "false" else "true"
+  String outfile = if (anonymize_output) then "~{vcf_basename}.anonymized.vcf" else "~{vcf_basename}.ploidy_fixed.vcf"
   
   Int threads = 4
   Int disk_size = ceil((size(vcf, "GB")) * 3.5 + 20) 
@@ -26,34 +25,26 @@ task postprocess_joint_vcf {
   command <<<
     set -euo pipefail
 
-    # if you don't need to anonymize output or fix ploidy, then just zip and index
-    if ~{just_zip_index}; then
-      # if already zipped, just index
-      if [[ ~{vcf} == *.gz ]]; then
-        cp ~{vcf} ~{outfile}.gz
-      else
-        bgzip \
-          --threads ~{threads} \
-          ~{vcf} \
-          > ~{outfile}.gz
-      fi
+    if ~{defined(sample_plus_sexes)}; then
+      SAMPLE_SEXES="--sample_sexes ~{sep=' ' sample_plus_sexes}"
     else
-      if ~{defined(sample_plus_sexes)}; then
-        SAMPLE_SEXES="--sample_sexes ~{sep=' ' sample_plus_sexes}"
-      else
-        SAMPLE_SEXES=""
-      fi
-      postprocess_joint_vcf.py \
-        ~{anonymize_prefix} \
-        ~{"--non_diploid_regions " + non_diploid_regions} \
-        $SAMPLE_SEXES \
-        --outfile ~{outfile} \
-        ~{vcf}
-
-      bgzip \
-        --threads ~{threads} \
-        ~{outfile}
+      SAMPLE_SEXES=""
     fi
+    
+    postprocess_joint_vcf.py \
+      ~{anonymize_prefix} \
+      ~{"--non_diploid_regions " + non_diploid_regions} \
+      $SAMPLE_SEXES \
+      --outfile ~{outfile} \
+      ~{vcf}
+
+    bgzip --version
+
+    bgzip \
+      --threads ~{threads} \
+      ~{outfile}
+
+    tabix --version
 
     tabix \
       --preset vcf \
@@ -75,7 +66,7 @@ task postprocess_joint_vcf {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:cc5decfb5b6931f93babf665386787add4823ef92402d929b56044aec743b00a"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:f6e5b3c8fd0f0fdc8c67a00e084817d73d15971808f48aabb3e8a82b9c9c4f5f"
   }
 }
 
@@ -97,11 +88,13 @@ task merge_trgt_vcfs {
   command {
     set -euo pipefail
 
+    # increase open file limit
+    ulimit -Sn 65536
+    
     merge_trgt_vcfs.py \
       --outfile ~{outfile} \
       ~{anonymize_prefix} \
-      ~{sep=" " trgt_vcfs} \
-
+      ~{sep=" " trgt_vcfs} 
 
     bgzip \
       --threads ~{threads} \
@@ -127,6 +120,6 @@ task merge_trgt_vcfs {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:cc5decfb5b6931f93babf665386787add4823ef92402d929b56044aec743b00a"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:f6e5b3c8fd0f0fdc8c67a00e084817d73d15971808f48aabb3e8a82b9c9c4f5f"
   }
 }
