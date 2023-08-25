@@ -268,24 +268,23 @@ class VariantRecord(object):
                 haploid_pls = [pl - min_pl for pl in haploid_pls]
                 
                 # get new genotype
+                # maintain a no call
+                if ("." in sample_dict["GT"]):
+                    gt = "."
+                    gq = sample_dict["GQ"]
                 # if all PLs are 0 but GT != ., make call with AD
-                if all(pl == 0 for pl in haploid_pls):
+                elif all(pl == 0 for pl in haploid_pls):
                     logger.warning(f"All PLs are 0 at {self.chrom}:{self.pos}. Using AD to make call.")
-                    ads = [int(ad) for ad in sample_dict["AD"].split(",")]
+                    ads = [int(ad) if ad != "." else 0 for ad in sample_dict["AD"].split(",")]
                     max_ad = max(ads)
                     # genotype unknown if AD is tied, otherwise highest AD
-                    if ads.count(max_ad) != 1:
-                        gt = "."
-                    else:
-                        # maintain a no call
-                        gt = "." if sample_dict["GT"] == "./." else ads.index(max_ad)
+                    gt = "." if ads.count(max_ad) != 1 else ads.index(max_ad)
                     gq = sample_dict["GQ"]
                 # otherwise, use PLs to make call
                 else:           
                     for i, pl in enumerate(haploid_pls):
                         if pl == 0:
-                            # maintain a no call
-                            gt = "." if sample_dict["GT"] == "./." else i
+                            gt = i
                         elif pl < gq:
                             gq = pl
                 haploid_pls = [str(pl) for pl in haploid_pls]
@@ -293,24 +292,24 @@ class VariantRecord(object):
         # pbsv
         elif "AD" in format:
             logger.debug(f"Using AD to fix ploidy at {self.chrom}:{self.pos}")
-            ads = [int(ad) for ad in sample_dict["AD"].split(",")]
-            max_ad = max(ads)
-            # genotype unknown if AD is tied, otherwise highest AD
-            if ads.count(max_ad) != 1:
+            if ("." in sample_dict["GT"]):
                 gt = "."
-            else:
-                gt = "." if sample_dict["GT"] == "./." else ads.index(max_ad)
+            else: 
+                ads = [int(ad) if ad != "." else 0 for ad in sample_dict["AD"].split(",")]
+                max_ad = max(ads)
+                # genotype unknown if AD is tied, otherwise highest AD
+                gt = "." if ads.count(max_ad) != 1 else ads.index(max_ad)
             sample_dict |= {"GT": str(gt)}
         # sniffles
         elif ("DR" in format) and ("DV" in format):
             logger.debug(f"Using DR+DV to fix ploidy at {self.chrom}:{self.pos}")
-            ads = [int(sample_dict["DR"]), int(sample_dict["DV"])]
-            max_ad = max(ads)
-            # genotype unknown if AD is tied, otherwise highest AD
-            if ads.count(max_ad) != 1:
+            if ("." in sample_dict["GT"]):
                 gt = "."
             else:
-                gt = "." if sample_dict["GT"] == "./." else ads.index(max_ad)
+                ads = [int(sample_dict["DR"]), int(sample_dict["DV"])]
+                max_ad = max(ads)
+                # genotype unknown if AD is tied, otherwise highest AD
+                gt = "." if ads.count(max_ad) != 1 else ads.index(max_ad)
             sample_dict |= {"GT": str(gt)}
         # hificnv
         elif ("CNQ" in format) and ("CN" in format):
