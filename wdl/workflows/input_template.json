@@ -22,10 +22,6 @@
     "peddy_bin": "File? (optional)"
   },
   "colors_cohort.anonymize_output": "Boolean (optional, default = true)",
-  "colors_cohort.max_samples_pbsv_call": "Int (optional, default = 150)",
-  "colors_cohort.max_sample_relatedness_qc": "Float (optional, default = 0.125)",
-  "colors_cohort.min_movie_relatedness_qc": "Float (optional, default = 0.875)",
-  "colors_cohort.deepvariant_version": "String (optional, default = \"1.5.0\")",  
   "colors_cohort.pbsv_call_mem_gb": "Int? (optional)",
   "colors_cohort.glnexus_mem_gb": "Int? (optional)",
   "colors_cohort.sniffles_call_mem_gb": "Int? (optional)",
@@ -33,6 +29,5 @@
   "colors_cohort.zones": "String? (optional)",
   "colors_cohort.aws_spot_queue_arn": "String? (optional)",
   "colors_cohort.aws_on_demand_queue_arn": "String? (optional)",
-  "colors_cohort.preemptible": "Boolean",
-  "colors_cohort.container_registry": "String (optional, default = \"quay.io/colorsdb\")",
+  "colors_cohort.preemptible": "Boolean"
 }
