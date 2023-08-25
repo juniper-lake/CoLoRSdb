@@ -133,24 +133,6 @@
       }
     },
     "colors_cohort.anonymize_output" : { "type" : "boolean" },
-    "colors_cohort.max_samples_pbsv_call" : {
-      "type" : "integer", 
-      "minimum": 2
-    },
-    "colors_cohort.max_sample_relatedness_qc" : {
-      "type" : "number", 
-      "minimum": 0, 
-      "maximum": 1
-    },
-    "colors_cohort.min_movie_relatedness_qc" : {
-      "type" : "number", 
-      "minimum": 0, 
-      "maximum": 1
-    },
-    "colors_cohort.deepvariant_version" : { 
-      "type" : "string",
-      "minLength": 1
-    },
     "colors_cohort.pbsv_call_mem_gb" : {
       "type" : "integer", 
       "minimum": 1
@@ -180,10 +162,6 @@
       "type" : "string",
       "minLength": 1 
     },
-    "colors_cohort.preemptible" : { "type" : "boolean" },
-    "colors_cohort.container_registry" : { 
-      "type" : "string",
-      "minLength": 1 
-    }
+    "colors_cohort.preemptible" : { "type" : "boolean" }
   }
 }

@@ -15,6 +15,7 @@ The cohort-level CoLoRS workflow performs alignment, quality control, variant ca
 - [Tutorial](docs/tutorial.md)
 - [Inputs](docs/inputs.md)
 - [Outputs](docs/outputs.md)
+- [Analysis](docs/analysis.md)
 - [Dockers](docs/dockers.md)
 
 ## Need help?
