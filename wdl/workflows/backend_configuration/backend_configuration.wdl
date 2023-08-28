@@ -20,7 +20,7 @@ workflow backend_configuration {
     RuntimeAttributes anvil_spot_runtime_attributes = {
       "preemptible_tries": 3,
       "max_retries": 3,
-      "zones": "",
+      "zones": select_first([zones]),
       "queue_arn": "",
       "container_registry": container_registry
     }
@@ -28,7 +28,7 @@ workflow backend_configuration {
     RuntimeAttributes anvil_on_demand_runtime_attributes = {
       "preemptible_tries": 0,
       "max_retries": 0,
-      "zones": "",
+      "zones": select_first([zones]),
       "queue_arn": "",
       "container_registry": container_registry
     }
