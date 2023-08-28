@@ -39,7 +39,7 @@ struct RuntimeAttributes {
   # The number of times to retry a task that fails due a to nonzero return code
   Int max_retries
 
-  String? zones
+  String zones
   String queue_arn
   String container_registry
 }
