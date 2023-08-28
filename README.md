@@ -8,7 +8,7 @@ The cohort-level CoLoRS workflow performs alignment, quality control, variant ca
 
 **Workflow entrypoint**: [wdl/workflows/main.wdl](wdl/workflows/main.wdl)
 
-![Human WGS workflow diagram](wdl/workflows/main.graphviz.svg "CoLoRSDdb workflow diagram")
+![Human WGS workflow diagram](wdl/workflows/main.graphviz.png "CoLoRSDdb workflow diagram")
 
 ## Documentation
 

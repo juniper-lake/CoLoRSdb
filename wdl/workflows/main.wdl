@@ -9,9 +9,7 @@ import "./cohort_combine_samples/cohort_combine_samples.wdl" as CohortCombineSam
 workflow colors_cohort {
   input {
     String cohort_id
-    Array[String]+? sample_ids
-    Array[Array[File]]+? movies
-    File? sample_sheet
+    File sample_sheet
 
     ReferenceData reference
     Boolean anonymize_output = true
@@ -47,34 +45,19 @@ workflow colors_cohort {
 
   RuntimeAttributes default_runtime_attributes = if preemptible then backend_configuration.spot_runtime_attributes else backend_configuration.on_demand_runtime_attributes
 
-  # read sample sheet if provided
-  if (defined(sample_sheet)) {
-    call Utils.read_sample_sheet {
-      input:
-        sample_sheet = select_first([sample_sheet]),
-        runtime_attributes = default_runtime_attributes
-    }
-
-    scatter (sample in read_sample_sheet.samples) {
-      Sample sample_sheet_samples = object {
-        sample_id: sample.left,
-        movies: sample.right
-      }
-    }
+  # read sample sheet
+  call Utils.read_sample_sheet {
+    input:
+      sample_sheet = select_first([sample_sheet]),
+      runtime_attributes = default_runtime_attributes
   }
 
-  # if no sample sheet, get sample_ids and movies
-  # this scatter gather makes sure arrays are the same length
-  if (!defined(sample_sheet)) {
-    scatter (idx in range(length(select_first([sample_ids])))) {
-      Sample array_samples = object {
-        sample_id: select_first([sample_ids])[idx],
-        movies: select_first([movies])[idx]
-      }
+  scatter (sample in read_sample_sheet.samples) {
+    Sample samples = object {
+      sample_id: sample.left,
+      movies: sample.right
     }
   }
-  
-  Array[Sample] samples = select_first([array_samples, sample_sheet_samples])
 
   # require at least 2 samples to run alignment and QC
   if (length(samples) > 1) {

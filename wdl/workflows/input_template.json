@@ -1,8 +1,6 @@
 {
   "colors_cohort.cohort_id": "String",
-  "colors_cohort.sample_ids": "Array[String]+? (optional)",
-  "colors_cohort.movies": "Array[Array[File]]+? (optional)",
-  "colors_cohort.sample_sheet": "File? (optional)",
+  "colors_cohort.sample_sheet": "File",
   "colors_cohort.reference": {
     "name": "String",
     "fasta": {
