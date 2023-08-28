@@ -314,7 +314,8 @@ class VariantRecord(object):
         # hificnv
         elif ("CNQ" in format) and ("CN" in format):
             logger.debug(f"Setting GT to 1 at {self.chrom}:{self.pos}")
-            sample_dict |= {"GT": "1"}
+            gt = "." if "." in sample_dict["GT"] else 1
+            sample_dict |= {"GT": str(gt)}
         else:
             raise ValueError(f"Format {format} is not supported for fixing ploidy.")
         new_sample = [sample_dict[key] for key in format]

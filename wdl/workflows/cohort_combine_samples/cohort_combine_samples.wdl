@@ -244,6 +244,8 @@ workflow cohort_combine_samples {
       input:
         vcf = merge_hificnv_vcfs.merged_cnv_vcf,
         cohort_id = cohort_id,
+        sample_plus_sexes = sample_plus_sex,
+        non_diploid_regions = reference.non_diploid_regions,
         anonymize_output = anonymize_output,
         runtime_attributes = default_runtime_attributes
     }

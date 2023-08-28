@@ -9,8 +9,8 @@ task postprocess_joint_vcf {
     File vcf
     String cohort_id
     Boolean anonymize_output
-    Array[String]? sample_plus_sexes
-    File? non_diploid_regions
+    Array[String] sample_plus_sexes
+    File non_diploid_regions
     
     RuntimeAttributes runtime_attributes
   }
@@ -24,17 +24,11 @@ task postprocess_joint_vcf {
   
   command <<<
     set -euo pipefail
-
-    if ~{defined(sample_plus_sexes)}; then
-      SAMPLE_SEXES="--sample_sexes ~{sep=' ' sample_plus_sexes}"
-    else
-      SAMPLE_SEXES=""
-    fi
     
     postprocess_joint_vcf.py \
       ~{anonymize_prefix} \
       ~{"--non_diploid_regions " + non_diploid_regions} \
-      $SAMPLE_SEXES \
+      --sample_sexes ~{sep=' ' sample_plus_sexes} \
       --outfile ~{outfile} \
       ~{vcf}
 
@@ -66,7 +60,7 @@ task postprocess_joint_vcf {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:f6e5b3c8fd0f0fdc8c67a00e084817d73d15971808f48aabb3e8a82b9c9c4f5f"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:f7bb242ed8c2acf46c083c3e308863268c61e21f92e23e20a6a9fddf98213bb0"
   }
 }
 
@@ -120,6 +114,6 @@ task merge_trgt_vcfs {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:f6e5b3c8fd0f0fdc8c67a00e084817d73d15971808f48aabb3e8a82b9c9c4f5f"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:f7bb242ed8c2acf46c083c3e308863268c61e21f92e23e20a6a9fddf98213bb0"
   }
 }
