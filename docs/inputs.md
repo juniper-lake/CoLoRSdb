@@ -19,9 +19,7 @@ A cohort should include at least 2 samples, although if you're running this on o
 | Type | Name | Description | Notes |
 | :- | :- | :- | :- |
 | String | cohort_id | A unique name for the cohort; used to name outputs | |
-| Array[String]+? | sample_ids | The set of samples for the cohort. When paired with `movies`, this can be used as an alternative input to `sample_sheet`. | Preferred sample input for Terra/AnViL. |
-| Array[Array[File]]+? | movies | The movies for each sample. When paired with `sample_ids`, this can be used as an alternative input to `sample_sheet` | Preferred sample input for Terra/AnViL. |
-| File? | sample_sheet | A sample sheet specifying `sample_ids` and their associated `movies` for the cohort. See an [example](examples/sample_sheet.tsv) | Preferred sample input for HPC. |
+| File | sample_sheet | A sample sheet specifying `sample_ids` and their associated `movies` for the cohort. | See an [example](examples/sample_sheet.tsv) |
 | Boolean | anonymize_output | Shuffle genotypes in output VCFs to de-identify samples | \[true, false\] |
 
 ## [ReferenceData](workflows/humanwgs_structs.wdl)

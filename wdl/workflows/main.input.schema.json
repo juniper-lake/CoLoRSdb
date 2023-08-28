@@ -1,42 +1,12 @@
 {
   "description": "CoLoRSdb cohort-level main workflow inputs.",
   "type" : "object",
-  "required" : [ "colors_cohort.cohort_id", "colors_cohort.reference" ],
-  "oneOf": [
-    {
-        "required": [ "colors_cohort.sample_ids", "colors_cohort.movies" ]
-    },
-    {
-        "required": [ "colors_cohort.sample_sheet" ]
-    }
-  ],
+  "required" : [ "colors_cohort.cohort_id", "colors_cohort.sample_sheet", "colors_cohort.reference" ],
   "properties" : {
     "colors_cohort.cohort_id" : {
       "type" : "string", 
       "minLength": 1,
       "pattern" : "^[A-Za-z0-9_-]+$"
-    },
-    "colors_cohort.sample_ids" : {
-      "type" : "array",
-      "minItems" : 1,
-      "items" : {
-        "type" : "string",
-        "minLength": 1,
-        "pattern" : "^[A-Za-z0-9_-]+$"
-      }
-    },
-    "colors_cohort.movies" : {
-      "type" : "array",
-      "minItems" : 1,
-      "items" : {
-        "type" : "array",
-        "minItems" : 1,
-        "items" : {
-          "type" : "string",
-          "minLength": 1,
-          "pattern" : "^.+(.bam|.fastq|.fq|.fq.gz|.fastq.gz)$"
-        }
-      }
     },
     "colors_cohort.sample_sheet" : { 
       "type" : "string",
