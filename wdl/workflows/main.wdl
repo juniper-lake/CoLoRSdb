@@ -68,8 +68,8 @@ workflow colors_cohort {
   if (!defined(sample_sheet)) {
     scatter (idx in range(length(select_first([sample_ids])))) {
       Sample array_samples = object {
-        sample_id: select_all([sample_ids])[idx],
-        movies: select_all([movies])[idx]
+        sample_id: select_first([sample_ids])[idx],
+        movies: select_first([movies])[idx]
       }
     }
   }
