@@ -59,11 +59,13 @@ task pbsv_call {
     File reference_fasta
     File reference_index
 
-    Int mem_gb = if sample_count > 20 then 128 else 64
+    Int? mem_gb
 
     RuntimeAttributes runtime_attributes
   }
   
+  Int default_mem_gb = if sample_count > 20 then 128 else 64
+  Int runtime_mem_gb = select_first([mem_gb, default_mem_gb])
   Int threads = 8
   Int disk_size = ceil((size(svsigs, "GB") + size(reference_fasta, "GB")) * 2 + 20)
 
@@ -91,7 +93,7 @@ task pbsv_call {
   
   runtime {
     cpu: threads
-    memory: "~{mem_gb} GB"
+    memory: "~{runtime_mem_gb} GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries
