@@ -103,18 +103,6 @@
       }
     },
     "colors_cohort.anonymize_output" : { "type" : "boolean" },
-    "colors_cohort.pbsv_call_mem_gb" : {
-      "type" : "integer", 
-      "minimum": 1
-    },
-    "colors_cohort.glnexus_mem_gb" : {
-      "type" : "integer", 
-      "minimum": 1
-    },
-    "colors_cohort.sniffles_call_mem_gb" : {
-      "type" : "integer", 
-      "minimum": 1
-    },
     "colors_cohort.backend" : {
       "type" : "string", 
       "minLength": 1,

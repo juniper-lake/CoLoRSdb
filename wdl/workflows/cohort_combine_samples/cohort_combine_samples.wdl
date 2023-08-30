@@ -27,10 +27,6 @@ workflow cohort_combine_samples {
 
     ReferenceData reference
 
-    Int? pbsv_call_mem_gb
-    Int? glnexus_mem_gb
-    Int? sniffles_call_mem_gb
-
     RuntimeAttributes default_runtime_attributes 
     RuntimeAttributes on_demand_runtime_attributes
   }
@@ -47,7 +43,6 @@ workflow cohort_combine_samples {
       gvcfs = deepvariant_gvcf,
       gvcf_indexes = deepvariant_gvcf_index,
       reference_name = reference.name,
-      mem_gb = glnexus_mem_gb,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -109,7 +104,6 @@ workflow cohort_combine_samples {
           reference_name = reference.name,
           reference_fasta = reference.fasta.data,
           reference_index = reference.fasta.index,
-          mem_gb = pbsv_call_mem_gb,
           runtime_attributes = on_demand_runtime_attributes
       }
     }
@@ -162,7 +156,6 @@ workflow cohort_combine_samples {
       reference_fasta = reference.fasta.data,
       reference_index = reference.fasta.index,
       tr_bed = reference.tandem_repeat_bed,
-      mem_gb = sniffles_call_mem_gb,
       runtime_attributes = default_runtime_attributes
   }
 

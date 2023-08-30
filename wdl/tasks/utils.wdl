@@ -14,6 +14,7 @@ task read_sample_sheet {
   Int disk_size = ceil(size(sample_sheet)) + 20
 
   command <<<
+    set -euo pipefail
     grep -v "^#" ~{sample_sheet} | grep -v -e '^$' | cut -f1 > sample_ids.txt
     grep -v "^#" ~{sample_sheet} | grep -v -e '^$'| cut -f2 | sed 's/,/\t/g' > movies.tsv
     

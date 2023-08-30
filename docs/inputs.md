@@ -45,12 +45,8 @@ Inputs associated with the reference genome. All files are hosted publicly on ze
 
 | Type | Name | Description | Notes |
 | :- | :- | :- | :- |
-| String | deepvariant_version | Override the default DeepVariant software version | |
-| Int? | pbsv_call_mem_gb | Optionally set RAM (GB) for pbsv_call joint calling | |
-| Int? | glnexus_mem_gb | Optionally set RAM (GB) for GLnexus joint calling | |
-| Int? | sniffles_call_mem_gb | Optionally set RAM (GB) for sniffles joint calling | |
 | String | backend | Backend where the workflow will be executed | \["AnVIL", "Azure", "AWS", "GCP", "HPC"\] |
-| String? | zones | Zones where compute will take place; required if backend is set to 'AWS' or 'GCP'. | <ul><li>[Determining available zones in AWS](backends/aws/README.md#determining-available-zones)</li><li>[Determining available zones in GCP](backends/gcp/README.md#determining-available-zones)</li></ul> |
-| String? | aws_spot_queue_arn | Queue ARN for the spot batch queue; required if backend is set to 'AWS' and `preemptible` is set to `true` | [Determining the AWS queue ARN](backends/aws/README.md#determining-the-aws-batch-queue-arn) |
-| String? | aws_on_demand_queue_arn | Queue ARN for the on demand batch queue; required if backend is set to 'AWS' and `preemptible` is set to `false` | [Determining the AWS queue ARN](backends/aws/README.md#determining-the-aws-batch-queue-arn) |
+| String? | zones | Zones where compute will take place; required if backend is set to 'AWS', 'GCP', or 'AnVIL'. | |
+| String? | aws_spot_queue_arn | Queue ARN for the spot batch queue; required if backend is set to 'AWS' and `preemptible` is set to `true` | |
+| String? | aws_on_demand_queue_arn | Queue ARN for the on demand batch queue; required if backend is set to 'AWS' and `preemptible` is set to `false` | |
 | Boolean | preemptible | If set to `true`, run tasks preemptibly where possible. On-demand VMs will be used only for tasks that run for >24 hours if the backend is set to GCP. If set to `false`, on-demand VMs will be used for every task. Ignored if backend is set to HPC. | \[true, false\] |
