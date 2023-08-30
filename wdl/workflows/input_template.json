@@ -20,9 +20,6 @@
     "peddy_bin": "File? (optional)"
   },
   "colors_cohort.anonymize_output": "Boolean (optional, default = true)",
-  "colors_cohort.pbsv_call_mem_gb": "Int? (optional)",
-  "colors_cohort.glnexus_mem_gb": "Int? (optional)",
-  "colors_cohort.sniffles_call_mem_gb": "Int? (optional)",
   "colors_cohort.backend": "String",
   "colors_cohort.zones": "String? (optional)",
   "colors_cohort.aws_spot_queue_arn": "String? (optional)",

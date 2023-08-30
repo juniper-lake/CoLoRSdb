@@ -14,11 +14,6 @@ workflow colors_cohort {
     ReferenceData reference
     Boolean anonymize_output = true
 
-    # memory configuration
-    Int? pbsv_call_mem_gb
-    Int? glnexus_mem_gb
-    Int? sniffles_call_mem_gb
-
     # backend configuration
     String backend
     String? zones
@@ -72,7 +67,7 @@ workflow colors_cohort {
     }
   }
   
-  Array[AlignedSample] qc_pass_samples = select_first([cohort_align_qc.qc_pass_samples])
+  Array[AlignedSample] qc_pass_samples = select_first([cohort_align_qc.qc_pass_samples,[]])
 
   # continue only if more than one sample passes QC
   if (length(qc_pass_samples) > 1) {
@@ -106,9 +101,6 @@ workflow colors_cohort {
         trgt_vcfs = select_all(sample_call_variants.trgt_vcf),
         hificnv_vcfs = select_all(sample_call_variants.hificnv_vcf),
         reference = reference,
-        pbsv_call_mem_gb = pbsv_call_mem_gb,
-        glnexus_mem_gb = glnexus_mem_gb,
-        sniffles_call_mem_gb = sniffles_call_mem_gb,
         default_runtime_attributes = default_runtime_attributes,
         on_demand_runtime_attributes = backend_configuration.on_demand_runtime_attributes
     }

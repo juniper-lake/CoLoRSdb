@@ -10,9 +10,6 @@
   "cohort_combine_samples.sniffles_snfs": "Array[File]",
   "cohort_combine_samples.trgt_vcfs": "Array[File?]",
   "cohort_combine_samples.hificnv_vcfs": "Array[WomCompositeType {\n data -> File\nindex -> File \n}?]",
-  "cohort_combine_samples.pbsv_call_mem_gb": "Int? (optional)",
-  "cohort_combine_samples.glnexus_mem_gb": "Int? (optional)",
-  "cohort_combine_samples.sniffles_call_mem_gb": "Int? (optional)",
   "cohort_combine_samples.reference": {
     "name": "String",
     "fasta": {
