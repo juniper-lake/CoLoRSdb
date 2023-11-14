@@ -30,6 +30,7 @@ task somalier_sample_swap {
     # get minimum pairwise relatedness (output 1 if there's only one movie)
     if [ ~{n_files} -eq 1 ]; then
       echo "1.0" > min_relatedness.txt
+      echo "0" > min_relatedness_n_sites.txt
     else
       paste <(echo -e "~{sep="\n" bams}") <(echo -e "~{sep="\n" movie_names}") > parallel_variables.txt
       mkdir extracted
@@ -50,7 +51,11 @@ task somalier_sample_swap {
         --min-ab=0.1 \
         --output-prefix=~{sample_id}.somalier \
         extracted/*.somalier
-      awk 'NR>1 {print $3}' ~{sample_id}.somalier.pairs.tsv | sort -n | head -1 > min_relatedness.txt
+
+      # get line corresponding to pairwise movie comparison with minimum relatedness
+      LINE=$(grep -v "^#" ~{sample_id}.somalier.pairs.tsv | sort -k3 -g | head -n1)
+      echo $LINE | cut -f3 -d " " > min_relatedness.txt
+      echo $LINE | cut -f14 -d " " > min_relatedness_n_sites.txt
     fi
   >>>
 
@@ -60,6 +65,7 @@ task somalier_sample_swap {
     File? pairs = "~{sample_id}.somalier.pairs.tsv"
     File? samples = "~{sample_id}.somalier.samples.tsv"
     Float min_relatedness = read_float("min_relatedness.txt")
+    Int min_relatedness_n_sites = read_int("min_relatedness_n_sites.txt")
   }
 
   runtime {
@@ -149,7 +155,7 @@ task somalier_relate_samples {
     # calculate relatedness among samples
     somalier relate \
       --min-depth=6 \
-      --min-ab=0.2 \
+      --min-ab=0.3 \
       --output-prefix=~{cohort_id}.somalier \
       --infer \
       ~{sep=" " extracted_sites}
@@ -166,12 +172,22 @@ task somalier_relate_samples {
       awk -v sample=$SAMPLE_ID '$1==sample {print $2}' ~{cohort_id}.related_samples_to_remove.tsv >> keep_drop.txt
       awk -v sample=$SAMPLE_ID '$1==sample {print $3}' ~{cohort_id}.related_samples_to_remove.tsv >> n_relations.txt
       SEX=$(awk -v sample=$SAMPLE_ID '$2==sample {print $5}' ~{cohort_id}.somalier.samples.tsv)
+      Y_N=$(awk -v sample=$SAMPLE_ID '$2==sample {print $25}' ~{cohort_id}.somalier.samples.tsv)
+      X_N=$(awk -v sample=$SAMPLE_ID '$2==sample {print $20}' ~{cohort_id}.somalier.samples.tsv)
+      X_HET=$(awk -v sample=$SAMPLE_ID '$2==sample {print $22}' ~{cohort_id}.somalier.samples.tsv)
+      X_HET_PROP="$((100*X_HET/X_N))"
       if [ $SEX -eq 1 ]; then
         echo "male" >> inferred_sex.txt
       elif [ $SEX -eq 2 ]; then
         echo "female" >> inferred_sex.txt
       else
-        echo "unknown" >> inferred_sex.txt
+        if [ $Y_N -gt 0 ] && [ $X_HET_PROP -lt 2 ]; then
+          echo "male" >> inferred_sex.txt
+        elif [ $Y_N -lt 1 ] && [ $X_HET_PROP -gt 10 ]; then
+          echo "female" >> inferred_sex.txt
+        else
+          echo "unknown" >> inferred_sex.txt
+        fi
       fi
     done
   >>>
