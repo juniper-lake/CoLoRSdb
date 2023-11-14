@@ -248,7 +248,7 @@ task deepvariant_postprocess_variants {
   runtime {
     docker: "gcr.io/deepvariant-docker/deepvariant:~{deepvariant_version}"
     cpu: 2
-    memory: "32 GB"
+    memory: "48 GB"
     disk: disk_size + " GB"
     disks: "local-disk " + disk_size + " HDD"
     preemptible: runtime_attributes.preemptible_tries

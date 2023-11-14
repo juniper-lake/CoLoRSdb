@@ -14,12 +14,12 @@ task glnexus {
 
     File? regions_bed
 
-    Int mem_gb = 156
+    Int mem_gb = 256
 
     RuntimeAttributes runtime_attributes
   }
 
-  Int threads = 24
+  Int threads = 32
   Int disk_size = ceil((size(gvcfs, "GB")) * 2 + 100)
 
   String output_prefix =  "~{cohort_id}.~{reference_name}.deepvariant.glnexus"
@@ -32,7 +32,7 @@ task glnexus {
     
     glnexus_cli \
       --threads ~{threads} \
-      --mem-gbytes ~{mem_gb} \
+      --mem-gbytes ~{mem_gb - 128} \
       --dir ~{cohort_id}.~{reference_name}.GLnexus.DB \
       --config DeepVariant_unfiltered \
       ~{"--bed " + regions_bed} \

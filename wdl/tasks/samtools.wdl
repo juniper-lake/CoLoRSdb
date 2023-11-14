@@ -68,16 +68,11 @@ task reset_aligned_bam {
 
     samtools --version
 
-    if samtools view -H ~{bam} | grep -q '@SQ'; then
-      echo "BAM is aligned"
-      samtools reset \
-        --remove-tag mc,mg,mi,rm \
-        --threads ~{threads - 1} \
-        -o ~{bam_basename}.reset.bam \
-        ~{bam}
-    elif samtools view -H ~{bam} | grep -v -q '@SQ'; then
-      echo "BAM is not aligned"
-    fi
+    samtools reset \
+      --remove-tag mc,mg,mi,rm,HP,fi,ri,fp,rp,fn,rn \
+      --threads ~{threads - 1} \
+      -o ~{bam_basename}.reset.bam \
+      ~{bam}
   }
 
   output {

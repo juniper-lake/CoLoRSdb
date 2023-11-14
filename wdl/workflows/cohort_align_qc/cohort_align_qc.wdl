@@ -126,8 +126,8 @@ workflow cohort_align_qc {
     Boolean qc_pass_combined = if pass_swap[idx] && pass_relatedness && pass_sex then true else false
     Float sample_relatedness_qc_threshold = max_sample_relatedness_qc
     Float movie_relatedness_qc_threshold = min_movie_relatedness_qc
-    Float min_movie_relatedness = somalier_sample_swap.min_relatedness[idx]
-    String n_relations = somalier_relate_samples.n_relations[idx]
+    # Float min_movie_relatedness = somalier_sample_swap.min_relatedness[idx]
+    # String n_relations = somalier_relate_samples.n_relations[idx]
 
     if (qc_pass_combined) {
       AlignedSample qc_pass_sample = object {
@@ -150,8 +150,9 @@ workflow cohort_align_qc {
       qc_pass_swap = pass_swap,
       qc_pass_relatedness = pass_relatedness,
       qc_pass_combined = qc_pass_combined,
-      min_movie_relatedness = min_movie_relatedness,
-      n_relations = n_relations,
+      min_movie_relatedness = somalier_sample_swap.min_relatedness,
+      min_movie_relatedness_n_sites = somalier_sample_swap.min_relatedness_n_sites,
+      n_relations = somalier_relate_samples.n_relations,
       sex = somalier_relate_samples.inferred_sexes,
       coverage_mean = mosdepth.mean_coverage,
       read_count = combine_smrtcell_stats.read_count,
@@ -167,7 +168,8 @@ workflow cohort_align_qc {
 
   output {
     Array[AlignedSample] qc_pass_samples = select_all(qc_pass_sample)
-    File pairwise_relatedness = somalier_relate_samples.pairs
+    File somalier_pairs = somalier_relate_samples.pairs
+    File somalier_samples = somalier_relate_samples.samples
     File qc_summary_tsv = summarize_qc.quality_control_summary
   }
 }
@@ -184,6 +186,7 @@ task summarize_qc {
     Array[Boolean] qc_pass_relatedness
     Array[Boolean] qc_pass_combined
     Array[Float] min_movie_relatedness
+    Array[Int] min_movie_relatedness_n_sites
     Array[String] n_relations
     Array[String] sex
     Array[Int] n_movies
@@ -213,6 +216,7 @@ task summarize_qc {
       <(echo -e "qc_pass_sex\n~{sep="\n" qc_pass_sex}") \
       <(echo -e "qc_pass_combined\n~{sep="\n" qc_pass_combined}") \
       <(echo -e "min_movie_relatedness\n~{sep="\n" min_movie_relatedness}") \
+      <(echo -e "min_movie_relatedness_n_sites\n~{sep="\n" min_movie_relatedness_n_sites}") \
       <(echo -e "n_relations\n~{sep="\n" n_relations}") \
       <(echo -e "sex\n~{sep="\n" sex}") \
       <(echo -e "n_movies\n~{sep="\n" n_movies}") \

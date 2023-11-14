@@ -25,7 +25,7 @@ struct ReferenceData {
   File tandem_repeat_bed
   File somalier_sites_vcf
 
-  File? trgt_tandem_repeat_bed
+  Array[File]? trgt_tandem_repeat_beds
   IndexData? hificnv_exclude_bed
   File? hificnv_expected_bed_male
   File? hificnv_expected_bed_female

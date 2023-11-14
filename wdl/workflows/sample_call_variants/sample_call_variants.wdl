@@ -7,6 +7,7 @@ import "../../tasks/pbsv.wdl" as Pbsv
 import "../deepvariant/deepvariant.wdl" as DeepVariant
 import "../../tasks/trgt.wdl" as Trgt
 import "../../tasks/hificnv.wdl" as Hificnv
+import "../../tasks/bcftools.wdl" as Bcftools
 
 workflow sample_call_variants {
   input {
@@ -31,6 +32,26 @@ workflow sample_call_variants {
         tandem_repeat_bed = reference.tandem_repeat_bed,
         runtime_attributes = default_runtime_attributes
     }
+    
+    # call SVs from svsigs with pbsv
+    call Pbsv.pbsv_call {
+      input:
+        sample_id = sample_id,
+        svsigs = [pbsv_discover.svsig],
+        region = reference.chromosomes[idx],
+        reference_name = reference.name,
+        reference_fasta = reference.fasta.data,
+        reference_index = reference.fasta.index,
+        runtime_attributes = default_runtime_attributes
+    }
+  }
+
+  # concat chromosome-specific pbsv calls into single vcf
+  call Bcftools.concat_pbsv_vcfs {
+    input:
+      vcfs = pbsv_call.vcf,
+      output_prefix = "~{sample_id}.~{reference.name}.pbsv",
+      runtime_attributes = default_runtime_attributes
   }
 
   # call structural variants with sniffles
@@ -57,16 +78,18 @@ workflow sample_call_variants {
   }
 
   # genotype tandem repeats with trgt
-  if (defined(reference.trgt_tandem_repeat_bed)) {
-    call Trgt.trgt {
-      input:
-        sex = sex,
-        bam = aligned_bam.data,
-        bam_index = aligned_bam.index,
-        reference_fasta = reference.fasta.data,
-        reference_index = reference.fasta.index,
-        tandem_repeat_bed = select_first([reference.trgt_tandem_repeat_bed]),
-        runtime_attributes = default_runtime_attributes
+  if (defined(reference.trgt_tandem_repeat_beds)) {
+    scatter (trgt_bed in select_first([reference.trgt_tandem_repeat_beds])) {
+      call Trgt.trgt {
+        input:
+          sex = sex,
+          bam = aligned_bam.data,
+          bam_index = aligned_bam.index,
+          reference_fasta = reference.fasta.data,
+          reference_index = reference.fasta.index,
+          tandem_repeat_bed = trgt_bed,
+          runtime_attributes = default_runtime_attributes
+      }
     }
   }
 
@@ -98,9 +121,13 @@ workflow sample_call_variants {
 
   output {
     File sniffles_snf = sniffles_discover.snf
-    Array[File]+ pbsv_svsigs = pbsv_discover.svsig
+    File unzipped_pbsv_vcf = concat_pbsv_vcfs.concatenated_vcf
+    IndexData pbsv_vcf = {
+      "data": concat_pbsv_vcfs.concatenated_zipped_vcf,
+      "index": concat_pbsv_vcfs.concatenated_zipped_vcf_index
+      }
     IndexData deepvariant_gvcf = deepvariant.gvcf
-    File? trgt_vcf = trgt.repeat_vcf
+    Array[File]? trgt_vcf = trgt.repeat_vcf
     IndexData? hificnv_vcf = hificnv_indexed_vcf
   }
 }
