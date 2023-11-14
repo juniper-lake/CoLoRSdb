@@ -39,7 +39,6 @@ class VCFParser(object):
         logger.info(f"Reading vcf from file {infile}")
         file_name, file_extension = os.path.splitext(infile)
         if file_extension == ".gz":
-            logger.debug("VCF is zipped")
             self.vcf = getreader("utf-8")(gzip.open(infile), errors="strict")
         elif file_extension == ".vcf":
             self.vcf = open(infile, mode="r", encoding="utf-8", errors="strict")
@@ -49,11 +48,10 @@ class VCFParser(object):
             )
 
         # Parse the metadata lines
-        logger.debug("Reading first line.")
         self.next_line = self.vcf.readline().rstrip()
         # First line is always a metadata line
         if not self.next_line.startswith("#"):
-            raise IOError("VCF files allways have to start with a metadata line.")
+            raise IOError("VCF files always have to start with a metadata line.")
         while self.next_line.startswith("#"):
             if self.next_line.startswith("##"):
                 self.metadata.append(self.next_line)
@@ -112,7 +110,6 @@ class VCFParser(object):
             if self.next_line:
                 variant_line = self.next_line.split("\t")
 
-                logger.debug("Checking if variant line is malformed")
                 if len(self.header) != len(variant_line):
                     raise SyntaxError(
                         f"One of the variant lines is malformed: {self.next_line}"
@@ -129,7 +126,6 @@ class VCFParser(object):
             variant_line = line.split("\t")
 
             if not line.startswith("#"):
-                logger.debug("Checking if variant line is malformed")
                 if len(self.header) != len(variant_line):
                     raise SyntaxError(f"One of the variant lines is malformed: {line}")
 
@@ -143,7 +139,6 @@ class VariantRecord(object):
 
     def __init__(self, variant_line):
         super().__init__()
-        logger.debug("Creating VariantRecords object")
         self.line = variant_line
         self.chrom = variant_line[0]
         self.pos = variant_line[1]
@@ -161,9 +156,18 @@ class VariantRecord(object):
         """Return a string representation of the variant record."""
 
         return "\t".join(self.line)
+    
+    def update_alleles(self, ref: str, alts: list):
+        """Update allele sequences."""
+        logger.debug(f"Updating allele sequences at {self.chrom}:{self.pos}")
+        self.ref = ref
+        self.alts = alts
+        self.alleles = [self.ref] + self.alts
+        self.line = self.variant_data + self.sample_data
 
     def update_genotypes(self, ref: str, alts: list):
         """Update genotype and haplotypes based on provided alleles."""
+        logger.debug(f"Updating genotypes at {self.chrom}:{self.pos}")
         old_alleles = self.alleles + ["."]
         new_alleles = [ref] + alts + ["."]
         unknown_index = len(old_alleles) - 1
