@@ -9,8 +9,8 @@ task postprocess_joint_vcf {
     File vcf
     String cohort_id
     Boolean anonymize_output
-    Array[String] sample_plus_sexes
-    File non_diploid_regions
+    Array[String]? sample_plus_sexes
+    File? non_diploid_regions
     
     RuntimeAttributes runtime_attributes
   }
@@ -25,10 +25,16 @@ task postprocess_joint_vcf {
   command <<<
     set -euo pipefail
     
+    if ~{defined(sample_plus_sexes)}; then
+      SAMPLE_SEXES="--sample_sexes ~{sep=' ' sample_plus_sexes}"
+    else
+      SAMPLE_SEXES=""
+    fi
+      
     postprocess_joint_vcf.py \
       ~{anonymize_prefix} \
       ~{"--non_diploid_regions " + non_diploid_regions} \
-      --sample_sexes ~{sep=' ' sample_plus_sexes} \
+      $SAMPLE_SEXES \
       --outfile ~{outfile} \
       ~{vcf}
 
@@ -60,20 +66,23 @@ task postprocess_joint_vcf {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:f7bb242ed8c2acf46c083c3e308863268c61e21f92e23e20a6a9fddf98213bb0"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:9d5a9d32adfb23d5ad65352b949ea455d70804b0c5da0d92bc414b504ffdcd58"
   }
 }
 
 task merge_trgt_vcfs {
   input {
     Array[File] trgt_vcfs
+    File trgt_bed
     String cohort_id
     String reference_name
+    File reference_index
     Boolean anonymize_output
 
     RuntimeAttributes runtime_attributes
   }
 
+  String bed_basename = basename(trgt_bed, ".bed")
   String anonymize_prefix = if (anonymize_output) then "--anonymize_prefix " + cohort_id else ""
   String outfile = if (anonymize_output) then "~{cohort_id}.~{reference_name}.trgt.anonymized.vcf" else "~{cohort_id}.~{reference_name}.trgt.vcf"
   Int threads = 4
@@ -85,9 +94,16 @@ task merge_trgt_vcfs {
     # increase open file limit
     ulimit -Sn 65536
     
+    bedtools sort \
+      -faidx ~{reference_index} \
+      -i ~{trgt_bed} \
+      > ~{bed_basename}.sorted.bed
+
     merge_trgt_vcfs.py \
       --outfile ~{outfile} \
       ~{anonymize_prefix} \
+      --loglevel DEBUG \
+      --bed ~{bed_basename}.sorted.bed \
       ~{sep=" " trgt_vcfs} 
 
     bgzip \
@@ -114,6 +130,6 @@ task merge_trgt_vcfs {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:f7bb242ed8c2acf46c083c3e308863268c61e21f92e23e20a6a9fddf98213bb0"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:9d5a9d32adfb23d5ad65352b949ea455d70804b0c5da0d92bc414b504ffdcd58"
   }
 }

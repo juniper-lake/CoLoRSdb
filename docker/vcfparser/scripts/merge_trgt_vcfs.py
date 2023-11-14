@@ -54,6 +54,11 @@ def parse_args(args):
         help="list of optionally gzipped TRGT VCF files to be aggregated and anonymized",
     )
     parser.add_argument(
+        "--bed",
+        dest="bed",
+        help="BED file used to generate VCF, should be sorted the same way as VCFs."
+    )
+    parser.add_argument(
         "--anonymize_prefix",
         dest="anonymize_prefix",
         help="sample name prefix for header, triggers anonymization",
@@ -77,6 +82,7 @@ def parse_args(args):
 
 def merge_trgt_vcfs(
     vcf_files: list,
+    bed: str,
     anonymize_prefix: str = None,
     outfile: str = None,
     meta_string: str = "merge_trgt_vcfs.py",
@@ -98,86 +104,98 @@ def merge_trgt_vcfs(
     if len(vcf_files) < 2:
         raise ValueError("Please provide at least two VCF files to aggregate")
 
-    # parse all VCFs, create iterators for all vcfs except the first
+    # parse all VCFs, create iterators for all vcfs
     vcfs = []
     vcf_iterators = []
     for vcf_file in vcf_files:
         vcfs.append(VCFParser(vcf_file))
-        if len(vcfs) > 1:
-            vcf_iterators.append(iter(vcfs[-1]))
-
-    # make sure metadata are the same
-    for vcf in vcfs[1:]:
-        if vcf.metadata != vcfs[0].metadata:
-            raise ValueError("VCFs have different metadata")
+        vcf_iterators.append(iter(vcfs[-1]))
 
     # print metadata and of first vcf
     vcfs[0].add_meta("commandline", meta_string)
     print(vcfs[0].print_metadata(), file=file)
 
     # print headerline
-    samples = vcfs[0].samples + flatten([vcf.samples for vcf in vcfs[1:]])
+    samples = flatten([vcf.samples for vcf in vcfs])
     if anonymize_prefix:
         samples = [f"{anonymize_prefix}_{i}" for i in range(1, len(samples) + 1)]
     headerline = "\t".join(vcfs[0].header_columns + samples)
     print(headerline, file=file)
 
-    # iterate through first vcf, get corresponding records from other vcfs
-    for sample1_record in vcfs[0]:
-        # go to next record for each vcf iterator, if any are empty, raise IndexError
-        other_sample_records = [
-            catch(
-                next,
-                vcf_iterator,
-                exception=StopIteration,
-                handle=IndexError,
-                message="VCFs have different numbers of variants",
-            )
-            for vcf_iterator in vcf_iterators
-        ]
-
-        # make sure info and format fields are the same for each variant
-        for other_sample_record in other_sample_records:
-            if sample1_record.info != other_sample_record.info:
-                raise ValueError(
-                    "VCFs have different INFO fields for the same locus. Were the VCFs sorted?"
+    # iterate through bed, get corresponding records from vcfs
+    with open(bed) as bed_file:
+        while trgt_bed_line := bed_file.readline():
+            bed_trgt_id = trgt_bed_line.split("\t")[3].split(";")[0].split("=")[1]
+            bed_chrom = trgt_bed_line.split("\t")[0]
+            bed_start = int(trgt_bed_line.split("\t")[1])
+            
+            # go to next record for each vcf iterator, if any are empty, raise IndexError
+            vcf_records = [
+                catch(
+                    next,
+                    vcf_iterator,
+                    exception=StopIteration,
+                    handle=IndexError,
+                    message="VCFs have different numbers of variants",
                 )
-            if sample1_record.format != other_sample_record.format:
-                raise ValueError(
-                    "VCFs have different INFO fields for the same locus. Were the VCFs sorted?"
-                )
-
-        alts = sample1_record.alts + flatten(
-            [other_sample_record.alts for other_sample_record in other_sample_records]
-        )
-        alts = sorted(list(set(alts)))
-
-        # if not all ref calls, update genotypes to reflect full list of alt alleles
-        if "." in alts and len(alts) > 1:
-            alts.remove(".")
-            sample1_record.update_genotypes(ref=sample1_record.ref, alts=alts)
-            [
-                other_sample_record.update_genotypes(ref=sample1_record.ref, alts=alts)
-                for other_sample_record in other_sample_records
+                for vcf_iterator in vcf_iterators
             ]
-            sample_data = sample1_record.sample_data + [
-                other_sample_record.sample_data[0]
-                for other_sample_record in other_sample_records
+
+            # get ref allele
+            if int(vcf_records[0].pos) == (bed_start + 1):
+                ref = vcf_records[0].ref
+            elif int(vcf_records[0].pos) == bed_start:
+                ref = vcf_records[0].ref[1:]
+
+            # get all alts, check that TRID matches and POS is as expected
+            alts = []
+            for sample_idx in range(len(vcf_records)):
+                if (vcf_trgt_id := vcf_records[sample_idx].info.split(";")[0].split("=")[1]) != bed_trgt_id:
+                    raise ValueError(
+                        f"{samples[sample_idx]} VCF TRID {vcf_trgt_id} does not match BED TRID {bed_trgt_id}."
+                    )
+                if int(vcf_records[sample_idx].pos) == (bed_start + 1):
+                    alts = alts + vcf_records[sample_idx].alts
+                # for alleles of length zero (i.e. entire ref range deleted, the POS is the same as the BED start instead of start + 1)
+                elif int(vcf_records[sample_idx].pos) == bed_start:
+                    # update vcf_record alts to remove leading base, replace complete deletions with N
+                    replacement_alts = [alt[1:] if (len(alt) > 1) else "N" for alt in vcf_records[sample_idx].alts]
+                    vcf_records[sample_idx].update_alleles(ref=ref, alts=replacement_alts)
+                    alts = alts + replacement_alts
+                else:
+                    raise ValueError(
+                        f"Sample {samples[sample_idx]} VCF position {vcf_records[sample_idx].pos} for TRGT ID {bed_trgt_id} does not match BED position {bed_start}"
+                    )
+
+            alts = sorted(list(set(alts)))
+
+            logger.info(f"Aggregating VCF records corresponding to TRGT ID {bed_trgt_id}")
+
+            # if there's more than one alt (either real or "."), update genotype numbers to reflect full list of alt alleles
+            if len(alts) > 1:
+                if "." in alts:
+                    alts.remove(".")
+                for sample_idx in range(len(vcf_records)):
+                    logger.debug(f"Updating genotypes for {samples[sample_idx]} at trgt id {bed_trgt_id}")
+                    vcf_records[sample_idx].update_genotypes(ref=ref, alts=alts)
+            sample_data = [
+                vcf_record.sample_data[0]
+                for vcf_record in vcf_records
             ]
             if anonymize_prefix:
                 sample_data = random.sample(sample_data, len(sample_data))
 
             # ['CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT',samples]
             aggregated_record = [
-                sample1_record.chrom,
-                sample1_record.pos,
-                sample1_record.id,
-                sample1_record.ref,
+                bed_chrom,
+                str(bed_start + 1),
+                ".",
+                ref,
                 ",".join(alts),
                 ".",
                 ".",
-                sample1_record.info,
-                sample1_record.format,
+                vcf_records[0].info,
+                vcf_records[0].format,
             ] + sample_data
             print("\t".join(aggregated_record), file=file)
 
@@ -202,5 +220,5 @@ if __name__ == "__main__":
     logger.configure(handlers=[{"sink": sys.stderr, "level": args.loglevel}])
 
     merge_trgt_vcfs(
-        args.vcfs, args.anonymize_prefix, args.outfile, " ".join(sys.argv)
+        args.vcfs, args.bed, args.anonymize_prefix, args.outfile, " ".join(sys.argv)
     )

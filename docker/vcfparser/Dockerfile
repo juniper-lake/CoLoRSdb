@@ -30,3 +30,11 @@ RUN wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/
 RUN cd /opt/htslib-${HTSLIB_VERSION} \
 	&& make \
 	&& make install
+
+ARG BEDTOOLS_VERSION
+RUN wget https://github.com/arq5x/bedtools2/releases/download/v${BEDTOOLS_VERSION}/bedtools-${BEDTOOLS_VERSION}.tar.gz \
+	&& tar -zxvf bedtools-${BEDTOOLS_VERSION}.tar.gz --directory /opt \
+	&& rm bedtools-${BEDTOOLS_VERSION}.tar.gz
+RUN cd /opt/bedtools2 \
+	&& make \
+	&& make install
