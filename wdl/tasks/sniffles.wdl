@@ -53,7 +53,7 @@ task sniffles_call {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/sniffles@sha256:6248e7da573708ac37ac42f119bba3e5b2bf0b622489730a8558c974cb9ac9f6"
+    docker: "~{runtime_attributes.container_registry}/sniffles@sha256:65ed8a5a6903434cbde9744f1d60aa31975729d6266fbe7abbf917a264e1076e"
   }
 }
 
@@ -103,6 +103,6 @@ task sniffles_discover {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/sniffles@sha256:6248e7da573708ac37ac42f119bba3e5b2bf0b622489730a8558c974cb9ac9f6"
+    docker: "~{runtime_attributes.container_registry}/sniffles@sha256:65ed8a5a6903434cbde9744f1d60aa31975729d6266fbe7abbf917a264e1076e"
   }
 }
