@@ -52,14 +52,13 @@ task pbsv_call {
   input {
     String sample_id
     Array[File] svsigs
-    Int sample_count
     String region
 
     String reference_name
     File reference_fasta
     File reference_index
 
-    Int mem_gb = if sample_count > 20 then 128 else 64
+    Int mem_gb = 80
 
     RuntimeAttributes runtime_attributes
   }
