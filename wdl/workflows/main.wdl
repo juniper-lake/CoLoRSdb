@@ -24,7 +24,6 @@ workflow colors_cohort {
 
   # these inputs are not in the input section because should not be changed for data contributing to CoLoRSdb
   String container_registry = "quay.io/colorsdb"
-  Int max_samples_pbsv_call = 150
   Float max_sample_relatedness_qc = 0.125
   Float min_movie_relatedness_qc = 0.7
   String deepvariant_version = "1.5.0"
@@ -43,7 +42,7 @@ workflow colors_cohort {
   # read sample sheet
   call Utils.read_sample_sheet {
     input:
-      sample_sheet = select_first([sample_sheet]),
+      sample_sheet = sample_sheet,
       runtime_attributes = default_runtime_attributes
   }
 
@@ -92,24 +91,16 @@ workflow colors_cohort {
       input:
         cohort_id = cohort_id,
         anonymize_output = anonymize_output,
-        max_samples_pbsv_call = max_samples_pbsv_call,
         sample_ids = sample_id,
         sexes = sex,
-        pbsv_svsigs = sample_call_variants.pbsv_svsigs,
+        pbsv_vcfs = sample_call_variants.pbsv_vcf,
+        unzipped_pbsv_vcfs = sample_call_variants.unzipped_pbsv_vcf,
         deepvariant_gvcfs = sample_call_variants.deepvariant_gvcf,
         sniffles_snfs = sample_call_variants.sniffles_snf,
         trgt_vcfs = select_all(sample_call_variants.trgt_vcf),
         hificnv_vcfs = select_all(sample_call_variants.hificnv_vcf),
         reference = reference,
-        default_runtime_attributes = default_runtime_attributes,
-        on_demand_runtime_attributes = backend_configuration.on_demand_runtime_attributes
-    }
-  
-    if (!anonymize_output) {
-      IndexData? original_deepvariant_vcf = cohort_combine_samples.cohort_deepvariant_vcf
-      Array[IndexData]? original_pbsv_vcfs = cohort_combine_samples.cohort_pbsv_vcfs
-      IndexData? original_sniffles_vcf = cohort_combine_samples.cohort_sniffles_vcf
-      IndexData? original_hificnv_vcf = cohort_combine_samples.cohort_hificnv_vcf
+        default_runtime_attributes = default_runtime_attributes
     }
   }
 
@@ -120,25 +111,27 @@ workflow colors_cohort {
 
     # qc
     File? qc_summary_tsv = cohort_align_qc.qc_summary_tsv
-    File? pairwise_relatedness_tsv = cohort_align_qc.pairwise_relatedness
+    File? somalier_pairs_tsv = cohort_align_qc.somalier_pairs
+    File? somalier_samples_tsv = cohort_align_qc.somalier_samples
 
     # postprocessed vcfs
-    IndexData? cohort_deepvariant_postprocessed_vcf = cohort_combine_samples.cohort_deepvariant_postprocessed_vcf
-    Array[IndexData]? cohort_pbsv_postprocessed_vcfs = cohort_combine_samples.cohort_pbsv_postprocessed_vcfs
-    IndexData? cohort_sniffles_postprocessed_vcf = cohort_combine_samples.cohort_sniffles_postprocessed_vcf
-    IndexData? cohort_trgt_postprocessed_vcf = cohort_combine_samples.cohort_trgt_postprocessed_vcf
-    IndexData? cohort_hificnv_postprocessed_vcf = cohort_combine_samples.cohort_hificnv_postprocessed_vcf
+    IndexData? deepvariant_glnexus_postprocessed_vcf = cohort_combine_samples.deepvariant_glnexus_postprocessed_vcf
+    IndexData? pbsv_jasminesv_postprocessed_vcf = cohort_combine_samples.pbsv_jasminesv_postprocessed_vcf
+    IndexData? sniffles_postprocessed_vcf = cohort_combine_samples.sniffles_postprocessed_vcf
+    Array[IndexData]? trgt_postprocessed_vcf = cohort_combine_samples.trgt_postprocessed_vcf
+    IndexData? hificnv_postprocessed_vcf = cohort_combine_samples.hificnv_postprocessed_vcf
 
     # original vcfs
-    IndexData? cohort_deepvariant_vcf = original_deepvariant_vcf
-    Array[IndexData]? cohort_pbsv_vcfs = original_pbsv_vcfs
-    IndexData? cohort_sniffles_vcf = original_sniffles_vcf
-    IndexData? cohort_hificnv_vcf = original_hificnv_vcf
+    IndexData? deepvariant_glnexus_vcf = cohort_combine_samples.deepvariant_glnexus_vcf
+    IndexData? pbsv_strictmerge_vcf = cohort_combine_samples.pbsv_strictmerge_vcf
+    IndexData? pbsv_jasminesv_vcf = cohort_combine_samples.pbsv_jasminesv_vcf
+    IndexData? sniffles_vcf = cohort_combine_samples.sniffles_vcf
+    Array[IndexData]? trgt_vcf = cohort_combine_samples.trgt_vcf
+    IndexData? hificnv_vcf = cohort_combine_samples.hificnv_vcf
 
     # vcf stats
-    File? cohort_deepvariant_vcf_stats = cohort_combine_samples.cohort_deepvariant_vcf_stats
-    Array[File]? cohort_pbsv_vcf_stats = cohort_combine_samples.cohort_pbsv_vcf_stats
-    File? cohort_sniffles_vcf_stats = cohort_combine_samples.cohort_sniffles_vcf_stats
+    File? pbsv_vcf_stats = cohort_combine_samples.pbsv_jasminesv_vcf_stats
+    File? sniffles_vcf_stats = cohort_combine_samples.sniffles_vcf_stats
     
     # ancestry
     File? peddy_het_check = cohort_combine_samples.peddy_het_check
