@@ -17,9 +17,9 @@ task read_sample_sheet {
     set -euo pipefail
     grep -v "^#" ~{sample_sheet} | grep -v -e '^$' | cut -f1 > sample_ids.txt
     grep -v "^#" ~{sample_sheet} | grep -v -e '^$'| cut -f2 | sed 's/,/\t/g' > movies.tsv
-    
+
     # are the number of rows the same for each column
-    if [ "$(wc -l < sample_ids.txt)" -ne "$(wc -l < movies.tsv)" ]; then 
+    if [ "$(wc -l < sample_ids.txt)" -ne "$(wc -l < movies.tsv)" ]; then
       echo "The number of sample id column and movies column in the sample sheet do not have the same number of rows." 1>&2
       exit 1
     fi

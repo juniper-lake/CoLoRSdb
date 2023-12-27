@@ -94,7 +94,7 @@ task deepvariant_make_examples {
     Int tasks_per_shard
 
     Int total_deepvariant_tasks
-  
+
     String deepvariant_version
 
     RuntimeAttributes runtime_attributes

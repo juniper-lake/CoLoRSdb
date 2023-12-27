@@ -26,10 +26,10 @@ task sniffles_call {
 
   command {
     set -euo pipefail
-    
+
     # increase open file limit
     ulimit -Sn 65536
-    
+
     sniffles \
       --threads ~{threads} \
       --reference ~{reference_fasta} ~{"--tandem-repeats " + tr_bed} \
@@ -79,7 +79,7 @@ task sniffles_discover {
 
   command {
     set -euo pipefail
-    
+
     sniffles \
       --threads ~{threads} \
       --sample-id ~{sample_id} \

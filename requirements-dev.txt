@@ -1,0 +1,10 @@
+miniwdl>=1.9.1
+miniwdl-slurm
+check-jsonschema
+jsonschema[format]
+pre-commit>=2.18.0
+pytest
+coverage
+pytest-cov
+loguru
+gsutil

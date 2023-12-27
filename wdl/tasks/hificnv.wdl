@@ -77,11 +77,11 @@ task hificnv {
       -o ~{sample_id}.~{reference_name}.hificnv.vcf \
       hificnv.~{sample_id}.vcf.gz
 
-    # compress 
+    # compress
     bgzip \
       --threads ~{threads} \
       ~{sample_id}.~{reference_name}.hificnv.vcf
-    
+
     tabix \
       --preset vcf \
       ~{sample_id}.~{reference_name}.hificnv.vcf.gz
@@ -117,7 +117,7 @@ task merge_hificnv_vcfs {
 
     RuntimeAttributes runtime_attributes
   }
-  
+
   Int mem_gb = 8
   Int threads = 4
   Int disk_size = ceil((size(cnv_vcfs, "GB")) * 2 + 20)
@@ -127,20 +127,20 @@ task merge_hificnv_vcfs {
 
     # increase open file limit
     ulimit -Sn 65536
-    
+
     bcftools --version
 
     bcftools merge \
       --merge id \
       ~{sep=" " cnv_vcfs} \
       > ~{cohort_id}.~{reference_name}.hificnv.vcf
-    
+
     bgzip --version
 
     bgzip \
       --threads ~{threads} \
       ~{cohort_id}.~{reference_name}.hificnv.vcf
-    
+
     tabix \
       --preset vcf \
       ~{cohort_id}.~{reference_name}.hificnv.vcf.gz

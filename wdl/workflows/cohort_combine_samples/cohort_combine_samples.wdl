@@ -26,14 +26,14 @@ workflow cohort_combine_samples {
 
     ReferenceData reference
 
-    RuntimeAttributes default_runtime_attributes 
+    RuntimeAttributes default_runtime_attributes
   }
 
   scatter (gvcf_object in deepvariant_gvcfs) {
     File deepvariant_gvcf = gvcf_object.data
     File deepvariant_gvcf_index = gvcf_object.index
   }
-  
+
   scatter (vcf_object in pbsv_vcfs) {
     File pbsv_vcf = vcf_object.data
     File pbsv_vcf_index = vcf_object.index
@@ -45,7 +45,7 @@ workflow cohort_combine_samples {
 
   # strict merge pbsv vcfs with bcftools
   call Bcftools.merge_vcfs as strict_merge_pbsv_vcfs {
-    input: 
+    input:
       vcfs = pbsv_vcf,
       vcf_indexes = pbsv_vcf_index,
       output_prefix = "~{cohort_id}.~{reference.name}.pbsv.strictmerge",
@@ -189,7 +189,7 @@ workflow cohort_combine_samples {
           runtime_attributes = default_runtime_attributes
       }
 
-      IndexData merged_trgt = { 
+      IndexData merged_trgt = {
         "data": merge_trgt_vcfs.merged_vcf,
         "index": merge_trgt_vcfs.merged_vcf_index
       }
@@ -204,16 +204,16 @@ workflow cohort_combine_samples {
             runtime_attributes = default_runtime_attributes
         }
 
-        IndexData postprocessed_trgt = { 
+        IndexData postprocessed_trgt = {
           "data": postprocess_trgt_vcf.postprocessed_vcf,
           "index": postprocess_trgt_vcf.postprocessed_vcf_index
         }
       }
     }
-    
+
     Array[IndexData] postprocessed_trgts = select_all(postprocessed_trgt)
   }
-  
+
   if (length(hificnv_vcfs) > 0) {
       scatter (vcf_object in select_all(hificnv_vcfs)) {
         File hificnv_vcf_data = vcf_object.data
@@ -229,7 +229,7 @@ workflow cohort_combine_samples {
         reference_name = reference.name,
         runtime_attributes = default_runtime_attributes
     }
-    
+
     IndexData merged_hificnv = {
       "data": merge_hificnv_vcfs.merged_cnv_vcf,
       "index": merge_hificnv_vcfs.merged_cnv_vcf_index
@@ -254,15 +254,15 @@ workflow cohort_combine_samples {
 
   output {
     # postprocessed VCFs
-    IndexData deepvariant_glnexus_postprocessed_vcf = { 
+    IndexData deepvariant_glnexus_postprocessed_vcf = {
       "data": postprocess_deepvariant_vcf.postprocessed_vcf,
       "index": postprocess_deepvariant_vcf.postprocessed_vcf_index
     }
-    IndexData pbsv_jasminesv_postprocessed_vcf = { 
+    IndexData pbsv_jasminesv_postprocessed_vcf = {
       "data": postprocess_pbsv_vcf.postprocessed_vcf,
-      "index": postprocess_pbsv_vcf.postprocessed_vcf_index 
+      "index": postprocess_pbsv_vcf.postprocessed_vcf_index
     }
-    IndexData sniffles_postprocessed_vcf = { 
+    IndexData sniffles_postprocessed_vcf = {
       "data": postprocess_sniffles_vcf.postprocessed_vcf,
       "index": postprocess_sniffles_vcf.postprocessed_vcf_index
     }
@@ -270,17 +270,17 @@ workflow cohort_combine_samples {
     IndexData? hificnv_postprocessed_vcf = postprocessed_hificnv
 
     # original VCFs, so if anonymize_output=false we can access VCFs without ploidy changes
-    IndexData deepvariant_glnexus_vcf = { 
+    IndexData deepvariant_glnexus_vcf = {
       "data": filter_norm_deepvariant.normalized_vcf,
       "index": filter_norm_deepvariant.normalized_vcf_index
     }
-    IndexData sniffles_vcf = { 
+    IndexData sniffles_vcf = {
       "data": filter_zip_index_sniffles.zipped_vcf,
       "index": filter_zip_index_sniffles.zipped_vcf_index
     }
-    IndexData pbsv_strictmerge_vcf = { 
+    IndexData pbsv_strictmerge_vcf = {
       "data": strict_merge_pbsv_vcfs.merged_vcf,
-      "index": strict_merge_pbsv_vcfs.merged_vcf_index 
+      "index": strict_merge_pbsv_vcfs.merged_vcf_index
     }
     IndexData pbsv_jasminesv_vcf = {
       "data": reheader_zip_index_jasminesv.zipped_vcf,
@@ -288,11 +288,11 @@ workflow cohort_combine_samples {
     }
     Array[IndexData]? trgt_vcf = merged_trgt
     IndexData? hificnv_vcf = merged_hificnv
-    
+
     # VCF stats
     File pbsv_jasminesv_vcf_stats = pbsv_jasminesv_stats.stats
     File sniffles_vcf_stats = sniffles_stats.stats
-    
+
     # Ancestry when peddy is run
     File? peddy_het_check = peddy.het_check
     File? peddy_sex_check = peddy.sex_check

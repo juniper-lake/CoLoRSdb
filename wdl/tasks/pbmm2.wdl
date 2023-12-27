@@ -9,21 +9,21 @@ task pbmm2 {
     File movie
     String out_prefix
     String sample_id
-    
+
     String reference_name
     File reference_fasta
     File reference_index
-    
+
     RuntimeAttributes runtime_attributes
     }
 
   Int threads = 24
   Int mem_gb = ceil(threads * 4)
   Int disk_size = ceil((size(movie, "GB") + size(reference_fasta, "GB")) * 4 + 20)
-  
+
   command {
     set -euo pipefail
-    
+
     pbmm2 align \
       --num-threads ~{threads} \
       --sort-memory 4G \
@@ -35,7 +35,7 @@ task pbmm2 {
       ~{reference_fasta} \
       ~{movie} \
       ~{out_prefix}.~{reference_name}.bam
-  
+
     # movie stats
     extract_read_length_and_qual.py \
       ~{movie} \
@@ -58,7 +58,7 @@ task pbmm2 {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/pbmm2@sha256:3f667eaadb336460a5b234923263dbec76853608c9b1e2c315237ae9677b7b5b"
+    docker: "~{runtime_attributes.container_registry}/pbmm2@sha256:c9c9dcb98b80de8e877e3bca5c035622e15d5e68341f86bbcecfadb771389177"
   }
 }
 
@@ -79,7 +79,7 @@ task combine_smrtcell_stats {
       | datamash count 1 countunique 1 median 2 mean 2 pstdev 2 median 3 mean 3 pstdev 3 \
       | awk '{OFS="\n"; $1=$1}1' \
       > ~{sample_id}.smrtcell_stats.txt
-    
+
     sed '1q;d' ~{sample_id}.smrtcell_stats.txt > read_count.txt
     sed '2q;d' ~{sample_id}.smrtcell_stats.txt > read_count_unique.txt
     sed '3q;d' ~{sample_id}.smrtcell_stats.txt > read_length_median.txt
@@ -111,6 +111,6 @@ task combine_smrtcell_stats {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/pbmm2@sha256:3f667eaadb336460a5b234923263dbec76853608c9b1e2c315237ae9677b7b5b"
-  }  
+    docker: "~{runtime_attributes.container_registry}/pbmm2@sha256:c9c9dcb98b80de8e877e3bca5c035622e15d5e68341f86bbcecfadb771389177"
+  }
 }

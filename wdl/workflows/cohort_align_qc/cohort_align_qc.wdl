@@ -1,6 +1,6 @@
 version 1.0
 
-# Align and perform QC on each sample in cohort 
+# Align and perform QC on each sample in cohort
 
 import "../../tasks/pbmm2.wdl" as Pbmm2
 import "../../tasks/somalier.wdl" as Somalier
@@ -22,7 +22,7 @@ workflow cohort_align_qc {
 
   scatter (sample in samples) {
     # align each movie with pbmm2
-    scatter (idx in range(length(sample.movies))) {    
+    scatter (idx in range(length(sample.movies))) {
       # get movie name from movie path but append "_movie1", "_movie2", etc in case file names
       # are not unique or don't follow HiFi naming convention
       String movie_name = sub(basename(sample.movies[idx]), "\\..*", "_movie~{idx}")
@@ -38,7 +38,7 @@ workflow cohort_align_qc {
 
       # align each movie
       call Pbmm2.pbmm2 {
-          input: 
+          input:
             movie = select_first([reset_aligned_bam.unaligned_bam, sample.movies[idx]]),
             out_prefix = "~{sample.sample_id}.~{movie_name}",
             sample_id = sample.sample_id,
@@ -48,7 +48,7 @@ workflow cohort_align_qc {
             runtime_attributes = default_runtime_attributes
       }
     }
-      
+
     # combine smrtcells stats for multiple movies
     call Pbmm2.combine_smrtcell_stats {
       input:
@@ -81,10 +81,10 @@ workflow cohort_align_qc {
     }
 
     IndexData merged_bam = {
-      "data": merge_bams.merged_bam, 
+      "data": merge_bams.merged_bam,
       "index": merge_bams.merged_bam_index
     }
-    
+
     # extract somalier sites from merged bam
     call Somalier.somalier_extract as somalier_extract_merged {
       input:
@@ -104,7 +104,7 @@ workflow cohort_align_qc {
         aligned_bam_index = merged_bam.index,
         runtime_attributes = default_runtime_attributes
     }
-    
+
     String sample_id = sample.sample_id
     Int n_movies = length(sample.movies)
   }
@@ -207,7 +207,7 @@ task summarize_qc {
 
   command <<<
     set -euo pipefail
-    
+
     paste <(echo -e "sample_id\n~{sep="\n" sample_ids}") \
       <(echo -e "movie_relatedness_qc_threshold\n~{sep="\n" movie_relatedness_qc_threshold}") \
       <(echo -e "sample_relatedness_qc_threshold\n~{sep="\n" sample_relatedness_qc_threshold}") \

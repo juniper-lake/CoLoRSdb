@@ -26,7 +26,7 @@ task mosdepth {
       --use-median \
       ~{prefix} \
       ~{aligned_bam}
-    
+
     awk '$1=="total" { print $4 }' ~{prefix}.mosdepth.summary.txt > ~{prefix}.mean_coverage.txt
   >>>
 

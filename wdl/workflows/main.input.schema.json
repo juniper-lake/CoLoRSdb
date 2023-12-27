@@ -4,13 +4,14 @@
   "required" : [ "colors_cohort.cohort_id", "colors_cohort.sample_sheet", "colors_cohort.reference" ],
   "properties" : {
     "colors_cohort.cohort_id" : {
-      "type" : "string", 
-      "minLength": 1,
-      "pattern" : "^[A-Za-z0-9_-]+$"
-    },
-    "colors_cohort.sample_sheet" : { 
       "type" : "string",
-      "minLength": 1 
+      "minLength": 1,
+      "pattern" : "^[A-Za-z0-9_]+$"
+    },
+    "colors_cohort.sample_sheet" : {
+      "type" : "string",
+      "minLength": 1,
+      "pattern" : "^[A-Za-z0-9_.-]+$"
     },
     "colors_cohort.reference" : {
       "type" : "object",
@@ -39,7 +40,7 @@
         },
         "chromosomes" : {
           "type" : "array",
-          "items" : { 
+          "items" : {
             "type" : "string",
             "minLength": 1,
             "pattern" : "^[A-Za-z0-9_-]+$"
@@ -48,43 +49,48 @@
         },
         "autosomes" : {
           "type" : "array",
-          "items" : { 
+          "items" : {
             "type" : "string",
             "minLength": 1,
             "pattern" : "^[A-Za-z0-9_-]+$"
           },
           "minItems" : 1
         },
-        "non_diploid_regions" : { 
-          "type" : "string",
-          "minLength": 1 
-        },
-        "tandem_repeat_bed" : { 
-          "type" : "string",
-          "minLength": 1 
-        },
-        "somalier_sites_vcf" : { 
+        "non_diploid_regions" : {
           "type" : "string",
           "minLength": 1
         },
-        "trgt_tandem_repeat_bed" : { 
+        "tandem_repeat_bed" : {
           "type" : "string",
           "minLength": 1
+        },
+        "somalier_sites_vcf" : {
+          "type" : "string",
+          "minLength": 1
+        },
+        "trgt_tandem_repeat_bed" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "minLength": 1,
+            "pattern" : "^[A-Za-z0-9_-]+$"
+          },
+          "minItems" : 1
         },
         "hificnv_exclude_bed" : {
           "type" : "object",
           "properties" : {
-            "data" : { 
+            "data" : {
               "type" : "string",
               "minLength": 1
             },
-            "index" : { 
+            "index" : {
               "type" : "string",
               "minLength": 1
             }
           }
         },
-        "hificnv_expected_bed_male" : { 
+        "hificnv_expected_bed_male" : {
           "type" : "string",
           "minLength": 1
         },
@@ -92,33 +98,33 @@
           "type" : "string",
           "minLength": 1
         },
-        "peddy_sites" : { 
+        "peddy_sites" : {
           "type" : "string",
-          "minLength": 1 
+          "minLength": 1
         },
-        "peddy_bin" : { 
+        "peddy_bin" : {
           "type" : "string",
-          "minLength": 1 
+          "minLength": 1
         }
       }
     },
     "colors_cohort.anonymize_output" : { "type" : "boolean" },
     "colors_cohort.backend" : {
-      "type" : "string", 
+      "type" : "string",
       "minLength": 1,
       "pattern" : "(^HPC$|^AWS$|^GCP$|^Azure$)"
     },
-    "colors_cohort.zones" : { 
+    "colors_cohort.zones" : {
       "type" : "string",
-      "minLength": 1 
+      "minLength": 1
     },
-    "colors_cohort.aws_spot_queue_arn" : { 
+    "colors_cohort.aws_spot_queue_arn" : {
       "type" : "string",
-      "minLength": 1 
+      "minLength": 1
     },
-    "colors_cohort.aws_on_demand_queue_arn" : { 
+    "colors_cohort.aws_on_demand_queue_arn" : {
       "type" : "string",
-      "minLength": 1 
+      "minLength": 1
     },
     "colors_cohort.preemptible" : { "type" : "boolean" }
   }
