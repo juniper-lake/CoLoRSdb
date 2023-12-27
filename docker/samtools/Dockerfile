@@ -25,4 +25,3 @@ RUN wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSI
 RUN cd /opt/samtools-${SAMTOOLS_VERSION} \
 	&& make \
 	&& make install
-  
