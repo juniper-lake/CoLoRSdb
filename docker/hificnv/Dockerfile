@@ -38,4 +38,3 @@ RUN wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/
 RUN cd /opt/htslib-${HTSLIB_VERSION} \
 	&& make \
 	&& make install
-	
