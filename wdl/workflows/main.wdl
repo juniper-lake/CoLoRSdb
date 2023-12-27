@@ -65,7 +65,7 @@ workflow colors_cohort {
         default_runtime_attributes = default_runtime_attributes
     }
   }
-  
+
   Array[AlignedSample] qc_pass_samples = select_first([cohort_align_qc.qc_pass_samples,[]])
 
   # continue only if more than one sample passes QC
@@ -132,7 +132,7 @@ workflow colors_cohort {
     # vcf stats
     File? pbsv_vcf_stats = cohort_combine_samples.pbsv_jasminesv_vcf_stats
     File? sniffles_vcf_stats = cohort_combine_samples.sniffles_vcf_stats
-    
+
     # ancestry
     File? peddy_het_check = cohort_combine_samples.peddy_het_check
     File? peddy_sex_check = cohort_combine_samples.peddy_sex_check

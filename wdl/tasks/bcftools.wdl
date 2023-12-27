@@ -40,7 +40,7 @@ task filter_norm_deepvariant {
       --output-type z \
       --output ~{vcf_basename}.norm.vcf.gz \
       {~{sep="," chromosomes}}.norm.vcf.gz
-    
+
     bcftools index \
       --threads ~{threads - 1} \
       --tbi \
@@ -148,7 +148,7 @@ task concat_pbsv_vcfs {
       --output-type z \
       --apply-filters PASS \
       --output concat.tmp.vcf.gz \
-      concat.tmp.vcf 
+      concat.tmp.vcf
 
     # must change AD values to DV/DR for jasmine compatibility
     bcftools query \
@@ -156,26 +156,26 @@ task concat_pbsv_vcfs {
       concat.tmp.vcf.gz \
       | bgzip --stdout \
       > annot.txt.gz
-    
+
     tabix \
       --sequence 1 \
       --begin 2 \
       --end 2 \
       annot.txt.gz
-    
+
     echo -e '##FORMAT=<ID=DV,Number=1,Type=String,Description="The number of reads supporting the variant sequence">' \
       > hdr.txt
     echo -e '##FORMAT=<ID=DR,Number=1,Type=String,Description="The number of reads supporting the reference sequence">' \
       >> hdr.txt
-    
+
     bcftools annotate \
       --annotations annot.txt.gz \
       --header-lines hdr.txt \
       --columns CHROM,POS,REF,ALT,FORMAT/DV,FORMAT/DR \
       --output-type v \
       --output ~{output_prefix}.vcf \
-      concat.tmp.vcf.gz 
-    
+      concat.tmp.vcf.gz
+
     bgzip \
       --threads ~{threads} \
       --stdout \
@@ -222,7 +222,7 @@ task merge_vcfs {
 
 command {
     set -euo pipefail
-    
+
     # increase open file limit
     ulimit -Sn 65536
 
@@ -264,14 +264,14 @@ task filter_zip_index_sniffles {
     Array[String] chromosomes
     RuntimeAttributes runtime_attributes
   }
-  
+
   String vcf_basename = basename(vcf)
   Int threads = 4
   Int disk_size = ceil(size(vcf, "GB") * 2 + 20)
 
   command <<<
     set -euo pipefail
-    
+
     bcftools --help
 
     bcftools view \
@@ -281,7 +281,7 @@ task filter_zip_index_sniffles {
       --output-type z \
       --output ~{vcf_basename}.gz \
       ~{vcf}
-    
+
     bcftools index \
       --threads ~{threads - 1} \
       --tbi \
@@ -313,18 +313,18 @@ task reheader_zip_index_jasminesv {
     Array[String] sample_ids
     RuntimeAttributes runtime_attributes
   }
-  
+
   String vcf_basename = basename(vcf)
   Int threads = 4
   Int disk_size = ceil(size(vcf, "GB") * 2 + 20)
 
   command <<<
     set -euo pipefail
-    
+
     echo -e "~{sep="\n" sample_ids}" > samples.txt
-          
+
     bcftools --help
-    
+
     bcftools reheader \
       --threads ~{threads - 1} \
       --samples samples.txt \

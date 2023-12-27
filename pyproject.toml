@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 120
+extend-select = ['Q', 'RUF100', 'C90', 'UP', 'I', 'D', 'T']
+extend-ignore = ['D105', 'D107', 'D205', 'D415']
+flake8-quotes = {inline-quotes = 'single', multiline-quotes = 'double'}
+mccabe = { max-complexity = 14 }
+target-version = "py38"
+
+[tool.ruff.format]
+quote-style = 'single'
+
+[tool.codespell]
+skip = '.git,resources,.venv'
+ignore-words-list = 'struc'

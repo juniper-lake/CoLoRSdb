@@ -88,7 +88,7 @@ build_docker_image() {
       exit 1
     fi
 
-    # Make all varaiables defined in build.env available as build args
+    # Make all variables defined in build.env available as build args
     while read -r varname || [[ -n "${varname}" ]]; do
       build_args+=(--build-arg "${varname}=${!varname}")
     done < <(grep -v -e '^#' -e '^$' "${build_env_file}" | cut -d '=' -f 1)
@@ -208,7 +208,7 @@ IMAGES_TO_BUILD=$(find "${DOCKER_CONTEXT_DIR}" -type f -name build.env)
 if [[ "${#IMAGES_TO_BUILD}" -eq 0 ]]; then
   usage
 
-  log "No target images found; call using -d docker_context_dir targetting a directory with at least one build.env file."
+  log "No target images found; call using -d docker_context_dir targeting a directory with at least one build.env file."
   exit
 fi
 

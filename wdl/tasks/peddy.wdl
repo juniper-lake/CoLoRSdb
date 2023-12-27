@@ -27,13 +27,13 @@ task peddy {
 
     # increase open file limit
     ulimit -Sn 65536
-    
+
     # make ped file
     for SAMPLE_ID in ~{sep=" " sample_ids}; do
       echo -e "${SAMPLE_ID}\t${SAMPLE_ID}\t0\t0\t0\t0" >> ~{cohort_id}.ped
     done
-    
-    # enforce naming requirement for peddy to run pca 
+
+    # enforce naming requirement for peddy to run pca
     # binfile = sitesfile+".bin.gz"
     ln -s ~{peddy_sites} peddy.sites
     ln -s ~{peddy_bin} peddy.sites.bin.gz
@@ -69,5 +69,5 @@ task peddy {
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
     docker: "~{runtime_attributes.container_registry}/peddy@sha256:a0224eb1161a87dad49b671d5e4126fcceac3c33b1f9dffa9c600b0507ea7a75"
-  }  
+  }
 }

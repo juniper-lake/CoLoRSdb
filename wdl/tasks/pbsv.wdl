@@ -62,7 +62,7 @@ task pbsv_call {
 
     RuntimeAttributes runtime_attributes
   }
-  
+
   Int threads = 8
   Int disk_size = ceil((size(svsigs, "GB") + size(reference_fasta, "GB")) * 2 + 20)
 
@@ -71,7 +71,7 @@ task pbsv_call {
 
     # increase open file limit
     ulimit -Sn 65536
-    
+
     pbsv call \
       --log-level INFO \
       --hifi \
@@ -87,7 +87,7 @@ task pbsv_call {
     File vcf = "~{sample_id}.~{reference_name}.~{region}.pbsv.vcf"
     File log = stdout()
   }
-  
+
   runtime {
     cpu: threads
     memory: "~{mem_gb} GB"

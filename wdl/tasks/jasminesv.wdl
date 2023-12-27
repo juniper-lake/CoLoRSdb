@@ -15,7 +15,7 @@ task jasminesv_merge_svs {
   Int threads = 16
   Int mem_gb = 64
   Int disk_size = ceil((size(vcfs, "GB")) * 3 + 20)
-  
+
   command <<<
     set -euo pipefail
 

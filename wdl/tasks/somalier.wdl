@@ -12,7 +12,7 @@ task somalier_sample_swap {
     Array[String] movie_names
 
     File reference_fasta
-    File reference_index    
+    File reference_index
     File somalier_sites_vcf
 
     RuntimeAttributes runtime_attributes
@@ -78,7 +78,7 @@ task somalier_sample_swap {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/somalier@sha256:5d09c9fc205ba660cc30bd07e116921ced0fe2279e3724a2c317fce9952dd483"
+    docker: "~{runtime_attributes.container_registry}/somalier@sha256:91fa892557e19a60de67e99f0a192aa2eccfec8eb2a1af05427ae48d81a24cc0"
   }
 }
 
@@ -126,7 +126,7 @@ task somalier_extract {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/somalier@sha256:5d09c9fc205ba660cc30bd07e116921ced0fe2279e3724a2c317fce9952dd483"
+    docker: "~{runtime_attributes.container_registry}/somalier@sha256:91fa892557e19a60de67e99f0a192aa2eccfec8eb2a1af05427ae48d81a24cc0"
   }
 }
 
@@ -151,7 +151,7 @@ task somalier_relate_samples {
 
     # increase open file limit
     ulimit -Sn 65536
-    
+
     # calculate relatedness among samples
     somalier relate \
       --min-depth=6 \
@@ -167,7 +167,7 @@ task somalier_relate_samples {
       --sample_order ~{sep=" " sample_ids} \
       --coverages ~{sep=" " coverages} \
       --outfile ~{cohort_id}.related_samples_to_remove.tsv
-    
+
     for SAMPLE_ID in ~{sep=" " sample_ids}; do
       awk -v sample=$SAMPLE_ID '$1==sample {print $2}' ~{cohort_id}.related_samples_to_remove.tsv >> keep_drop.txt
       awk -v sample=$SAMPLE_ID '$1==sample {print $3}' ~{cohort_id}.related_samples_to_remove.tsv >> n_relations.txt
@@ -212,6 +212,6 @@ task somalier_relate_samples {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/somalier@sha256:5d09c9fc205ba660cc30bd07e116921ced0fe2279e3724a2c317fce9952dd483"
+    docker: "~{runtime_attributes.container_registry}/somalier@sha256:91fa892557e19a60de67e99f0a192aa2eccfec8eb2a1af05427ae48d81a24cc0"
   }
 }

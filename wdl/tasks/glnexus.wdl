@@ -29,7 +29,7 @@ task glnexus {
 
     # increase open file limit
     ulimit -Sn 65536
-    
+
     glnexus_cli \
       --threads ~{threads} \
       --mem-gbytes ~{mem_gb - 128} \

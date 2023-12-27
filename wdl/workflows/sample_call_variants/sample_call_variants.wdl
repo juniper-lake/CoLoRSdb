@@ -16,7 +16,7 @@ workflow sample_call_variants {
     String sex
 
     ReferenceData reference
-    
+
     String deepvariant_version
 
     RuntimeAttributes default_runtime_attributes
@@ -32,7 +32,7 @@ workflow sample_call_variants {
         tandem_repeat_bed = reference.tandem_repeat_bed,
         runtime_attributes = default_runtime_attributes
     }
-    
+
     # call SVs from svsigs with pbsv
     call Pbsv.pbsv_call {
       input:
@@ -93,8 +93,8 @@ workflow sample_call_variants {
     }
   }
 
-  if (defined(reference.hificnv_exclude_bed) 
-    && defined(reference.hificnv_expected_bed_male) 
+  if (defined(reference.hificnv_exclude_bed)
+    && defined(reference.hificnv_expected_bed_male)
     && defined(reference.hificnv_expected_bed_female)) {
       call Hificnv.hificnv {
         input:

@@ -69,7 +69,7 @@ task reset_aligned_bam {
     samtools --version
 
     samtools reset \
-      --remove-tag mc,mg,mi,rm,HP,fi,ri,fp,rp,fn,rn \
+      --remove-tag mc,mg,mi,rm,HP,PS,fi,ri,fp,rp,fn,rn \
       --threads ~{threads - 1} \
       -o ~{bam_basename}.reset.bam \
       ~{bam}

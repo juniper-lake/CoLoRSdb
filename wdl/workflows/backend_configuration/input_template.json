@@ -1,7 +1,0 @@
-{
-  "backend_configuration.backend": "String",
-  "backend_configuration.zones": "String? (optional)",
-  "backend_configuration.aws_spot_queue_arn": "String? (optional)",
-  "backend_configuration.aws_on_demand_queue_arn": "String? (optional)",
-  "backend_configuration.container_registry": "String"
-}

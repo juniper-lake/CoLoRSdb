@@ -1,0 +1,75 @@
+minimum_pre_commit_version: '2.18.0'
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [commit, push]
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.3.0
+  hooks:
+  - id: no-commit-to-branch  # prevent direct commits to main branch
+    alias: no-commit-to-main
+  - id: check-yaml
+    args: ['--unsafe']
+  # - id: check-toml
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+  - id: no-commit-to-branch
+    alias: validate-branch-name
+    args: ['--pattern', '^(?!((fix|feat|style|ci|test|docs)\/[a-zA-Z0-9\-]+)$).*']
+
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.2.4
+  hooks:
+  - id: codespell
+    additional_dependencies:
+      - tomli
+    exclude: '^pdm\.lock$'
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.1.8
+  hooks:
+  # Run the linter.
+  - id: ruff
+    types_or: [ python, pyi, jupyter ]
+  # Run the linter and fix the errors.
+  - id: ruff
+    alias: ruff-fix
+    types_or: [ python, pyi, jupyter ]
+    args: [ --fix ]
+    stages: [manual]
+  # Run the formatter.
+  - id: ruff-format
+    types_or: [ python, pyi, jupyter ]
+    args: [ --check ]
+  # Run the formatter and fix the errors.
+  - id: ruff-format
+    alias: ruff-format-fix
+    types_or: [ python, pyi, jupyter ]
+    stages: [manual]
+
+- repo: https://github.com/commitizen-tools/commitizen
+  rev: v3.13.0
+  hooks:
+    - id: commitizen
+      stages: [commit-msg]
+    - id: commitizen-branch
+      stages: [push]
+
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: 'v1.7.1'
+  hooks:
+  - id: mypy
+    args: [--strict, --ignore-missing-imports]
+    additional_dependencies: [tokenize-rt==3.2.0]
+    stages: [manual]
+
+- repo: local
+  hooks:
+  - id: miniwdl-check
+    name: miniwdl check
+    language: system
+    files: ".+\\.wdl"
+    verbose: true
+    entry: .venv/bin/miniwdl
+    args: [check]

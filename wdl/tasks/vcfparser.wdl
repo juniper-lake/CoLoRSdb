@@ -11,26 +11,26 @@ task postprocess_joint_vcf {
     Boolean anonymize_output
     Array[String]? sample_plus_sexes
     File? non_diploid_regions
-    
+
     RuntimeAttributes runtime_attributes
   }
 
   String vcf_basename = basename(basename(vcf, ".gz"), ".vcf")
   String anonymize_prefix = if (anonymize_output) then "--anonymize_prefix ~{cohort_id}" else ""
   String outfile = if (anonymize_output) then "~{vcf_basename}.anonymized.vcf" else "~{vcf_basename}.ploidy_fixed.vcf"
-  
+
   Int threads = 4
-  Int disk_size = ceil((size(vcf, "GB")) * 3.5 + 20) 
-  
+  Int disk_size = ceil((size(vcf, "GB")) * 3.5 + 20)
+
   command <<<
     set -euo pipefail
-    
+
     if ~{defined(sample_plus_sexes)}; then
       SAMPLE_SEXES="--sample_sexes ~{sep=' ' sample_plus_sexes}"
     else
       SAMPLE_SEXES=""
     fi
-      
+
     postprocess_joint_vcf.py \
       ~{anonymize_prefix} \
       ~{"--non_diploid_regions " + non_diploid_regions} \
@@ -48,7 +48,7 @@ task postprocess_joint_vcf {
 
     tabix \
       --preset vcf \
-      ~{outfile}.gz   
+      ~{outfile}.gz
   >>>
 
   output {
@@ -66,7 +66,7 @@ task postprocess_joint_vcf {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:9d5a9d32adfb23d5ad65352b949ea455d70804b0c5da0d92bc414b504ffdcd58"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:2aff9193cfdd6d71b38b8c366d69dc03374de691f10b6b1128fe571ebb2fce2c"
   }
 }
 
@@ -84,7 +84,7 @@ task merge_trgt_vcfs {
 
   String bed_basename = basename(trgt_bed, ".bed")
   String anonymize_prefix = if (anonymize_output) then "--anonymize_prefix " + cohort_id else ""
-  String outfile = if (anonymize_output) then "~{cohort_id}.~{reference_name}.trgt.anonymized.vcf" else "~{cohort_id}.~{reference_name}.trgt.vcf"
+  String outfile = if (anonymize_output) then "~{cohort_id}.~{reference_name}.~{bed_basename}.anonymized.vcf" else "~{cohort_id}.~{reference_name}.~{bed_basename}.vcf"
   Int threads = 4
   Int disk_size = ceil((size(trgt_vcfs, "GB")) * 3.5 + 20)
 
@@ -93,7 +93,7 @@ task merge_trgt_vcfs {
 
     # increase open file limit
     ulimit -Sn 65536
-    
+
     bedtools sort \
       -faidx ~{reference_index} \
       -i ~{trgt_bed} \
@@ -104,7 +104,7 @@ task merge_trgt_vcfs {
       ~{anonymize_prefix} \
       --loglevel DEBUG \
       --bed ~{bed_basename}.sorted.bed \
-      ~{sep=" " trgt_vcfs} 
+      ~{sep=" " trgt_vcfs}
 
     bgzip \
       --threads ~{threads} \
@@ -130,6 +130,6 @@ task merge_trgt_vcfs {
     awsBatchRetryAttempts: runtime_attributes.max_retries
     queueArn: runtime_attributes.queue_arn
     zones: runtime_attributes.zones
-    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:9d5a9d32adfb23d5ad65352b949ea455d70804b0c5da0d92bc414b504ffdcd58"
+    docker: "~{runtime_attributes.container_registry}/vcfparser@sha256:2aff9193cfdd6d71b38b8c366d69dc03374de691f10b6b1128fe571ebb2fce2c"
   }
 }
