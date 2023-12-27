@@ -1,11 +1,11 @@
 {
-  "colors_cohort.cohort_id": "String",
-  "colors_cohort.sample_sheet": "File",
+  "colors_cohort.cohort_id": "<cohort_id>",
+  "colors_cohort.sample_sheet": "<path/to/sample_sheet.tsv>",
   "colors_cohort.reference": {
     "name": "GRCh38",
     "fasta": {
-      "data": "<local_path_prefix>/colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.fasta",
-      "index": "<local_path_prefix>/colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.fasta.fai"
+      "data": "colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.fasta",
+      "index": "colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.fasta.fai"
     },
     "chromosomes": [
       "chr1",
@@ -58,18 +58,22 @@
       "chr21",
       "chr22"
     ],
-    "non_diploid_regions": "<local_path_prefix>/colorsdb_resources/GRCh38/vcfparser.GRCh38.ploidy.txt",
+    "non_diploid_regions": "colorsdb_resources/GRCh38/vcfparser.GRCh38.ploidy.txt",
     "hificnv_exclude_bed": {
-      "data": "<local_path_prefix>/colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.common_50.hg38.bed.gz",
-      "index": "<local_path_prefix>/colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.common_50.hg38.bed.gz.tbi"
+      "data": "colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.hg38.bed.gz",
+      "index": "colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.hg38.bed.gz.tbi"
     },
-    "hificnv_expected_bed_male": "<local_path_prefix>/colorsdb_resources/GRCh38/hificnv.male_expected_cn.hg38.bed",
-    "hificnv_expected_bed_female": "<local_path_prefix>/colorsdb_resources/GRCh38/hificnv.female_expected_cn.hg38.bed",
-    "tandem_repeat_bed": "<local_path_prefix>/colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.trf.bed",
-    "trgt_tandem_repeat_bed": "<local_path_prefix>/colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.trgt.bed",
-    "somalier_sites_vcf": "<local_path_prefix>/colorsdb_resources/GRCh38/somalier.sites.hg38.vcf.gz",
-    "peddy_sites": "<local_path_prefix>/colorsdb_resources/GRCh38/peddy.GRCH38.sites",
-    "peddy_bin": "<local_path_prefix>/colorsdb_resources/GRCh38/peddy.GRCH38.sites.bin.gz"
+    "hificnv_expected_bed_male": "colorsdb_resources/GRCh38/hificnv.male_expected_cn.hg38.bed",
+    "hificnv_expected_bed_female": "colorsdb_resources/GRCh38/hificnv.female_expected_cn.hg38.bed",
+    "tandem_repeat_bed": "colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.trf.bed",
+    "trgt_tandem_repeat_beds": [
+      "colorsdb_resources/GRCh38/trgt.adotto_repeats.hg38.bed",
+      "colorsdb_resources/GRCh38/trgt.pathogenic_repeats.hg38.bed",
+      "colorsdb_resources/GRCh38/trgt.repeat_catalog.hg38.bed"
+    ],
+    "somalier_sites_vcf": "colorsdb_resources/GRCh38/somalier.sites.hg38.vcf.gz",
+    "peddy_sites": "colorsdb_resources/GRCh38/peddy.GRCH38.sites",
+    "peddy_bin": "colorsdb_resources/GRCh38/peddy.GRCH38.sites.bin.gz"
   },
   "colors_cohort.backend": "HPC",
   "colors_cohort.preemptible": false

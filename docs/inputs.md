@@ -1,20 +1,8 @@
 # Workflow inputs
 
-Reference datasets and associated input files are hosted publicly for use in the pipeline. 
-
-You can validate your input json file against the [schema](../wdl/workflows/main.input.schema.json) using [`check-jsonschema`](https://check-jsonschema.readthedocs.io/en/latest/index.html) (requires `python3` and `pip`). This will ensure that inputs are the correct format and that no required inputs are missing.
-
-```bash
-# install required packages
-pip install check-jsonschema 'jsonschema[format]'
-
-# validate json
-check-jsonschema --schemafile ./wdl/workflows/main.input.schema.json <your_inputs.json> 
-```
-
 ## Cohort-specific inputs
 
-A cohort should include at least 2 samples, although if you're running this on only 2 samples, this probably isn't the workflow for you. Samples can either be specified using **either** `sample_sheet` (example [here](examples/sample_sheet.tsv)) **or** by defining both `sample_ids` and `movies`. 
+A cohort should include at least 2 samples, although if you're running this on only 2 samples, this probably isn't the workflow for you.
 
 | Type | Name | Description | Notes |
 | :- | :- | :- | :- |
@@ -26,6 +14,8 @@ A cohort should include at least 2 samples, although if you're running this on o
 
 Inputs associated with the reference genome. All files are hosted publicly on zenodo. Only **GRCh38** and **CHM13** reference genomes are currently supported for this workflow, and some workflow steps (TRGT, HiFiCNV, peddy) only support GRCh38 (see notes below).
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10277930.svg)](https://doi.org/10.5281/zenodo.10277930)
+
 | Type | Name | Description | Notes |
 | :- | :- | :- | :- |
 | String | name | Reference name; used to name outputs (e.g., "GRCh38") | |
@@ -34,7 +24,7 @@ Inputs associated with the reference genome. All files are hosted publicly on ze
 | File | non_diploid_regions | BED-style list of regions where ploidy < 2 with added columns for sex and ploidy, used to correct genotype ploidy in output VCFs | |
 | File | tandem_repeat_bed | Tandem repeat locations used by [pbsv](https://github.com/PacificBiosciences/pbsv) and [sniffles](https://github.com/fritzsedlazeck/Sniffles) to normalize SV representation | |
 | File | somalier_sites_vcf | Sites used for quality control on aligned BAMs with [somalier](https://github.com/brentp/somalier) | |
-| File? | trgt_tandem_repeat_bed | Tandem repeat sites to be genotyped by [TRGT](https://github.com/PacificBiosciences/trgt) | GRCh38 only ; required for [TRGT](https://github.com/PacificBiosciences/trgt) to run |
+| Array[File]? | trgt_tandem_repeat_beds | Tandem repeat sites to be genotyped by [TRGT](https://github.com/PacificBiosciences/trgt) | GRCh38 only ; required for [TRGT](https://github.com/PacificBiosciences/trgt) to run |
 | [IndexData](https://github.com/PacificBiosciences/wdl-common/blob/main/wdl/structs.wdl)? | hificnv_exclude_bed | Compressed BED and index of regions to exclude from calling by [HiFiCNV](https://github.com/PacificBiosciences/HiFiCNV). | GRCh38 only ; required for [HiFiCNV](https://github.com/PacificBiosciences/HiFiCNV) to run |
 | File? | hificnv_expected_bed_male | BED of expected copy number for male karyotype for [HiFiCNV](https://github.com/PacificBiosciences/HiFiCNV) | GRCh38 only ; required for [HiFiCNV](https://github.com/PacificBiosciences/HiFiCNV) to run |
 | File? | hificnv_expected_bed_female | BED of expected copy number for female karyotype for [HiFiCNV](https://github.com/PacificBiosciences/HiFiCNV) | GRCh38 only ; required for [HiFiCNV](https://github.com/PacificBiosciences/HiFiCNV) to run |
