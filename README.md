@@ -4,7 +4,7 @@ These workflows are written in [Workflow Description Language (WDL)](https://ope
 
 ## Workflow
 
-The cohort-level CoLoRS workflow performs alignment, quality control, variant calling, joint-calling small variants and structural variants for a cohort. The workflow can run using Azure, AWS, GCP, and HPC backends.
+The cohort-level CoLoRS workflow performs alignment, quality control, variant calling, joint-calling small variants and structural variants for a cohort. The workflow can run using Azure, AWS, GCP, and HPC backends but has not been tested on all these platforms.
 
 **Workflow entrypoint**: [wdl/workflows/main.wdl](wdl/workflows/main.wdl)
 

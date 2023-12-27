@@ -2,38 +2,95 @@
 
 **Workflow entrypoint**: [wdl/workflows/main.wdl](wdl/workflows/main.wdl)
 
-## Setting up and running the workflow
+While this workflow is structured to be run a variety of backends (HPC, AWS, GCP, Azure) using either `Miniwdl` or `Cromwell`, it has only been tested on HPC (SLURM + MiniWDL) and AnViL (GCP/Azure + Cromwell). The following instructions are limited to these two options.
 
-1. Install and configure the workflow execution engine of your choice following the documentation for the backend environment where your data is located. See the [backend environments](#backend-environments) section for more information specific to your backend.
+- [HPC Quickstart](#hpc-quickstart)
+- [AnViL/Terra Quickstart](#anvilterra-quickstart)
 
-2. Fill out the [input template file](../wdl/workflows/input_template.json). Partially pre-filled input templates can also be found in [backends](../backends).
+## HPC Quickstart
 
-3. Optionally validate your input json by following the instructions in [inputs](inputs.md).
+This sections describes running the workflow with MiniWDL on a SLURM job scheduler.
 
-4. Run the workflow using the engine and backend of choice (described below). Please read backend-specific information on launching the workflow in [backends](../backends).
+### Requirements
 
-## Backend environments
+- Your HPC job scheduler should be SLURM
+- Python3
+- Pip
 
-The workflow can be run on Azure, AWS, GCP, or HPC, but has thus far only been tested on HPC and AnVIL (GCP). 
+> [!WARNING] Each step should be completed without errors before moving on to the next.
 
-- [AnVIL](backends/anvil)
-- [HPC](backends/hpc)
+### 1. Download and install everything
 
-## Workflow engines
+```
+# clone github repo
+git clone https://github.com/juniper-lake/CoLoRSdb.git
 
-Two popular engines for running WDL-based workflows are [`miniwdl`](https://miniwdl.readthedocs.io/en/latest/getting_started.html) and [`Cromwell`](https://cromwell.readthedocs.io/en/stable/tutorials/FiveMinuteIntro/).
+# make virtual environment and install dependencies
+cd CoLoRSdb
+python3 -m venv .venv
+./.venv/bin/pip install -U pip
+./.venv/bin/pip install miniwdl>=1.9.1 miniwdl-slurm
 
-The workflow engine that you choose will depend on where your data is located.
+# download and unzip required reference files
+wget https://zenodo.org/records/10277930/files/colorsdb.v1.0.1.resources.tgz
+tar -xzf colorsdb.v1.0.1.resources.tgz && rm colorsdb.v1.0.1.resources.tgz
+```
 
-| Engine | Azure | AWS | GCP | HPC |
-| :- | :- | :- | :- | :- |
-| [**miniwdl**](https://github.com/chanzuckerberg/miniwdl#scaling-up) | _Unsupported_ | Supported via the [Amazon Genomics CLI](https://aws.amazon.com/genomics-cli/) | _Unsupported_ | (SLURM only) Supported via the [`miniwdl-slurm`](https://github.com/miniwdl-ext/miniwdl-slurm) plugin |
-| [**Cromwell**](https://cromwell.readthedocs.io/en/stable/backends/Backends/) | Supported via [Cromwell on Azure](https://github.com/microsoft/CromwellOnAzure) | Supported via the [Amazon Genomics CLI](https://aws.amazon.com/genomics-cli/) | Supported via Google's [Pipelines API](https://cromwell.readthedocs.io/en/stable/backends/Google/) | Supported - [Configuration varies depending on HPC infrastructure](https://cromwell.readthedocs.io/en/stable/tutorials/HPCIntro/) |
+### 2. Create your input/configuration files
 
-### Run using miniwdl
+There are four files that need to be copied to the working directory and edited to specify the correct inputs and workflow configuration.
 
-`miniwdl run wdl/workflows/main.wdl --input <input_file_path.json>`
+First, copy them to your working directory. Don't move these files from their original locations because some are used for testing.
 
-### Run using Cromwell
+```
+cp wdl/tests/test_data/sample_sheet.tsv backends/hpc/* .
+```
 
-`java -jar <cromwell_jar_path> run wdl/workflows/main_cohort.wdl -i <input_file_path.json>`
+Second, edit the files with your favorite editor.
+
+- Update `miniwdl.cfg` so it will run correctly on your system. Please see the [default miniwdl config](https://github.com/chanzuckerberg/miniwdl/blob/main/WDL/runtime/config_templates/default.cfg) and the [miniwdl-slurm config example](https://github.com/miniwdl-ext/miniwdl-slurm#configuration) for more details.
+- Update both `inputs.hpc.grch38.json` and `inputs.hpc.chm13.json` with the correct `cohort_id` and `sample_sheet`. These values should be the same in both files.
+- Replace sample info in `sample_sheet.tsv` with your own. First column is sample IDs, which should have no spaces or special characters except underscores. The second column is a comman-separated list of HiFi movies (FASTQ or BAM) associated with the sample.
+
+### 3. Test to make sure miniwdl works
+
+> [!WARNING]
+> You cannot launch miniwdl from an interactive `srun` session.
+
+```
+# activate your virtual environment
+source .venv/bin/activate
+
+# test miniwdl and miniwdl-slurm, this should complete quickly
+miniwdl run --verbose \
+  --dir miniwdl_execution/tests \
+  --cfg miniwdl.cfg \
+  wdl/tests/hello.wdl
+```
+
+### 4. Run the workflow
+
+Remember to run on both GRCh38 and CHM13.
+
+```
+# activate your virtual environment if not already activated
+source .venv/bin/activate
+
+# run your workflow on GRCh38
+miniwdl run --verbose \
+  --cfg miniwdl.cfg \
+  --dir miniwdl_execution/grch38 \
+  --input inputs.hpc.grch38.json \
+  wdl/workflows/main.wdl \
+
+# when previous run is complete, run on CHM13
+miniwdl run --verbose \
+  --cfg miniwdl.cfg \
+  --dir miniwdl_execution/chm13 \
+  --input inputs.hpc.chm13.json \
+  wdl/workflows/main.wdl \
+```
+
+## AnViL/Terra Quickstart
+
+Coming soon!
