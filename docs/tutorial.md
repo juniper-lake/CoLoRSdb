@@ -17,7 +17,8 @@ This sections describes running the workflow with MiniWDL on a SLURM job schedul
 - Python3
 - Pip
 
-> [!WARNING] Each step should be completed without errors before moving on to the next.
+> [!WARNING]
+> Each step should be completed without errors before moving on to the next.
 
 ### 1. Download and install everything
 
@@ -26,7 +27,6 @@ This sections describes running the workflow with MiniWDL on a SLURM job schedul
 git clone https://github.com/juniper-lake/CoLoRSdb.git
 
 # make virtual environment and install dependencies
-cd CoLoRSdb
 python3 -m venv .venv
 ./.venv/bin/pip install -U pip
 ./.venv/bin/pip install miniwdl>=1.9.1 miniwdl-slurm
@@ -43,7 +43,7 @@ There are four files that need to be copied to the working directory and edited 
 First, copy them to your working directory. Don't move these files from their original locations because some are used for testing.
 
 ```
-cp wdl/tests/test_data/sample_sheet.tsv backends/hpc/* .
+cp CoLoRSdb/wdl/tests/test_data/sample_sheet.tsv CoLoRSdb/backends/hpc/* .
 ```
 
 Second, edit the files with your favorite editor.
@@ -55,7 +55,7 @@ Second, edit the files with your favorite editor.
 ### 3. Test to make sure miniwdl works
 
 > [!WARNING]
-> You cannot launch miniwdl from an interactive `srun` session.
+> You cannot launch miniwdl on SLURM from an interactive `srun` session.
 
 ```
 # activate your virtual environment
@@ -65,7 +65,7 @@ source .venv/bin/activate
 miniwdl run --verbose \
   --dir miniwdl_execution/tests \
   --cfg miniwdl.cfg \
-  wdl/tests/hello.wdl
+  CoLoRSdb/wdl/tests/hello.wdl
 ```
 
 ### 4. Run the workflow
@@ -81,14 +81,14 @@ miniwdl run --verbose \
   --cfg miniwdl.cfg \
   --dir miniwdl_execution/grch38 \
   --input inputs.hpc.grch38.json \
-  wdl/workflows/main.wdl \
+  CoLoRSdb/wdl/workflows/main.wdl \
 
 # when previous run is complete, run on CHM13
 miniwdl run --verbose \
   --cfg miniwdl.cfg \
   --dir miniwdl_execution/chm13 \
   --input inputs.hpc.chm13.json \
-  wdl/workflows/main.wdl \
+  CoLoRSdb/wdl/workflows/main.wdl \
 ```
 
 ## AnViL/Terra Quickstart

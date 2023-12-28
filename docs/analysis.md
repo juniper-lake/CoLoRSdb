@@ -58,7 +58,7 @@ Postprocessing of each zipped, indexed, multi-sample VCF is achieved with a [cus
 - Randomly shuffle genotypes for each variant (see example below)
   - This step only occurs is `anonymize_output = true`
 
-![De-identified VCF example](examples/anonymize_output_example.png)
+![De-identified VCF example](images/anonymize_output_example.png)
 
 ## Multi-cohort analysis
 
