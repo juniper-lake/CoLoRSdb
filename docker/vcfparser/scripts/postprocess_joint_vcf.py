@@ -60,10 +60,10 @@ def parse_args(args):
 def get_non_diploid_regions(non_diploid_regions_file: str = None, sexes: list = None):
     """Read non diploid regions from file and return as list of tuples."""
     # check if hap regions file exists
+    non_diploid_regions = []
     if non_diploid_regions_file:
         if not os.path.isfile(non_diploid_regions_file):
             raise OSError(f'File {non_diploid_regions_file} does not exist.')
-        non_diploid_regions = []
         logger.info(f'Reading haploid regions from {non_diploid_regions_file}')
         with open(non_diploid_regions_file) as file:
             while line := file.readline():
@@ -88,6 +88,7 @@ def get_non_diploid_regions(non_diploid_regions_file: str = None, sexes: list = 
                 raise OSError(f'File {non_diploid_regions_file} is empty.')
         if not sexes:
             raise OSError('File of haploid regions was provided but no sample sexes were specified.')
+    return non_diploid_regions
 
 
 def postprocess_joint_vcf(
@@ -96,7 +97,7 @@ def postprocess_joint_vcf(
     non_diploid_regions_file: str = None,
     sexes: list = None,
     outfile: str = None,
-    meta_string: str = 'anonymize_joint_vcf.py',
+    meta_string: str = 'postprocess_joint_vcf.py',
 ):
     """Parse VCF, change sample names, update metadata, and print shuffled VCF."""
     non_diploid_regions = get_non_diploid_regions(non_diploid_regions_file, sexes)
@@ -108,7 +109,7 @@ def postprocess_joint_vcf(
         if os.path.isfile(outfile):
             raise OSError(f'Output file {outfile} already exists.')
         else:
-            logger.info(f'Writing anonymized VCF to {outfile}')
+            logger.info(f'Writing output VCF to {outfile}')
             file = open(outfile, 'w')
     else:
         logger.info('No output file provided, printing to stdout')
