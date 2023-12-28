@@ -181,7 +181,7 @@ workflow cohort_combine_samples {
       call Vcfparser.merge_trgt_vcfs {
         input:
           trgt_vcfs = select_all(trgt_vcfs_transposed[idx]),
-          trgt_bed = reference.trgt_tandem_repeat_beds[idx],
+          trgt_bed = select_first([reference.trgt_tandem_repeat_beds])[idx],
           cohort_id = cohort_id,
           reference_name = reference.name,
           reference_index = reference.fasta.index,
