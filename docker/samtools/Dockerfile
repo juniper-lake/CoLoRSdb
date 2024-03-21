@@ -1,4 +1,4 @@
-FROM ubuntu:focal
+FROM python:3.9-buster
 
 LABEL org.opencontainers.image.authors="Juniper Lake <jlake@pacificbiosciences.com>"
 
@@ -16,6 +16,8 @@ RUN apt-get -qq update \
 		liblzma-dev \
 		libbz2-dev \
 		libcurl4-openssl-dev \
+		jq \
+		parallel \
 	&& rm -rf /var/lib/apt/lists/*
 
 ARG SAMTOOLS_VERSION
@@ -25,3 +27,10 @@ RUN wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSI
 RUN cd /opt/samtools-${SAMTOOLS_VERSION} \
 	&& make \
 	&& make install
+
+COPY scripts/* /opt/scripts/
+ENV PATH "${PATH}":/opt/scripts
+
+ARG PYSAM_VERSION
+RUN python3 -m pip install setuptools==58
+RUN python3 -m pip install pysam==${PYSAM_VERSION}
