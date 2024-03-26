@@ -2,7 +2,7 @@ version 1.0
 
 # Set runtime attributes across environments depending on the backend in use
 
-import "../../structs.wdl"
+import "../structs.wdl"
 
 workflow backend_configuration {
   input {

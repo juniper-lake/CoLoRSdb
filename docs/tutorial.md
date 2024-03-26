@@ -1,11 +1,6 @@
 # Running the workflow
 
-**Workflow entrypoint**: [wdl/workflows/main.wdl](wdl/workflows/main.wdl)
-
-While this workflow is structured to be run a variety of backends (HPC, AWS, GCP, Azure) using either `Miniwdl` or `Cromwell`, it has only been tested on HPC (SLURM + MiniWDL) and AnViL (GCP/Azure + Cromwell). The following instructions are limited to these two options.
-
-- [HPC Quickstart](#hpc-quickstart)
-- [AnViL/Terra Quickstart](#anvilterra-quickstart)
+**Please [contact Juniper Lake by email](mailto:jlake@pacificbiosciences.com) before attempting to run this workflow. This is NOT a development-level workflow and requires special instructions.**
 
 ## HPC Quickstart
 
@@ -33,24 +28,22 @@ python3 -m venv .venv
 
 # download and unzip required reference files
 wget https://zenodo.org/records/10277930/files/colorsdb.v1.0.1.resources.tgz
-tar -xzf colorsdb.v1.0.1.resources.tgz && rm colorsdb.v1.0.1.resources.tgz
 ```
 
 ### 2. Create your input/configuration files
 
-There are four files that need to be copied to the working directory and edited to specify the correct inputs and workflow configuration.
+There are two files that need to be copied to the working directory and edited to specify the correct inputs and workflow configuration.
 
 First, copy them to your working directory. Don't move these files from their original locations because some are used for testing.
 
 ```
-cp CoLoRSdb/wdl/tests/test_data/sample_sheet.tsv CoLoRSdb/backends/hpc/* .
+cp CoLoRSdb/wdl/tests/test_data/sample_sheet.tsv CoLoRSdb/docs/sources/miniwdl.cfg .
 ```
 
 Second, edit the files with your favorite editor.
 
 - Update `miniwdl.cfg` so it will run correctly on your system. Please see the [default miniwdl config](https://github.com/chanzuckerberg/miniwdl/blob/main/WDL/runtime/config_templates/default.cfg) and the [miniwdl-slurm config example](https://github.com/miniwdl-ext/miniwdl-slurm#configuration) for more details.
-- Update both `inputs.hpc.grch38.json` and `inputs.hpc.chm13.json` with the correct `cohort_id` and `sample_sheet`. These values should be the same in both files.
-- Replace sample info in `sample_sheet.tsv` with your own. First column is sample IDs, which should have no spaces or special characters except underscores. The second column is a comman-separated list of HiFi movies (FASTQ or BAM) associated with the sample.
+- Replace sample info in `sample_sheet.tsv` with your own. First column is sample IDs, which should have no spaces or special characters except underscores. The second column is a comma-separated list of HiFi movies (FASTQ or BAM) associated with the sample.
 
 ### 3. Test to make sure miniwdl works
 
@@ -70,27 +63,28 @@ miniwdl run --verbose \
 
 ### 4. Run the workflow
 
-Remember to run on both GRCh38 and CHM13.
-
 ```
 # activate your virtual environment if not already activated
 source .venv/bin/activate
 
 # run your workflow on GRCh38
+# replace anything in <> with your own info
 miniwdl run --verbose \
   --cfg miniwdl.cfg \
-  --dir miniwdl_execution/grch38 \
+  --dir miniwdl_execution \
   --input inputs.hpc.grch38.json \
-  CoLoRSdb/wdl/workflows/main.wdl \
-
-# when previous run is complete, run on CHM13
-miniwdl run --verbose \
-  --cfg miniwdl.cfg \
-  --dir miniwdl_execution/chm13 \
-  --input inputs.hpc.chm13.json \
-  CoLoRSdb/wdl/workflows/main.wdl \
+  CoLoRSdb/wdl/workflows/colors_main.wdl \
+  cohort_id=<your_cohort_id> \
+  sample_sheet=<path/to/sample_sheet.tsv> \
+  reference_bundle=colorsdb.v1.0.1.resources.tgz \
+  backend=HPC \
+  preemptible=false
 ```
 
 ## AnViL/Terra Quickstart
 
 Coming soon!
+
+  <!-- "colors_main.backend": "AnVIL",
+  "colors_main.preemptible": true,
+  "colors_main.zones": "us-central1-a us-central1-c us-central1-b us-central1-f" -->

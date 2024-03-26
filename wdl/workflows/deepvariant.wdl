@@ -2,25 +2,22 @@ version 1.0
 
 # Call variants using DeepVariant
 
-import "../../structs.wdl"
+import "../structs.wdl"
 
 workflow deepvariant {
   input {
     String sample_id
-    Array[IndexData] aligned_bams
+    Array[File] aligned_bams
+    Array[File] aligned_bam_indexes
 
     String reference_name
-    IndexData reference_fasta
-
-    String deepvariant_version
+    File reference_fasta
+    File reference_fasta_index
 
     RuntimeAttributes default_runtime_attributes
   }
 
-  scatter (bam_object in aligned_bams) {
-    File aligned_bam = bam_object.data
-    File aligned_bam_index = bam_object.index
-  }
+  String deepvariant_version = "1.5.0"
 
   Int total_deepvariant_tasks = 64
   Int num_shards = 8
@@ -32,10 +29,10 @@ workflow deepvariant {
     call deepvariant_make_examples {
       input:
         sample_id = sample_id,
-        aligned_bams = aligned_bam,
-        aligned_bam_indices = aligned_bam_index,
-        reference = reference_fasta.data,
-        reference_index = reference_fasta.index,
+        aligned_bams = aligned_bams,
+        aligned_bam_indexes = aligned_bam_indexes,
+        reference = reference_fasta,
+        reference_index = reference_fasta_index,
         task_start_index = task_start_index,
         tasks_per_shard = tasks_per_shard,
         total_deepvariant_tasks = total_deepvariant_tasks,
@@ -59,8 +56,8 @@ workflow deepvariant {
       sample_id = sample_id,
       tfrecord = deepvariant_call_variants.tfrecord,
       nonvariant_site_tfrecord_tars = deepvariant_make_examples.nonvariant_site_tfrecord_tar,
-      reference = reference_fasta.data,
-      reference_index = reference_fasta.index,
+      reference = reference_fasta,
+      reference_index = reference_fasta_index,
       reference_name = reference_name,
       total_deepvariant_tasks = total_deepvariant_tasks,
       deepvariant_version = deepvariant_version,
@@ -68,16 +65,10 @@ workflow deepvariant {
   }
 
   output {
-    IndexData vcf = {"data": deepvariant_postprocess_variants.vcf, "index": deepvariant_postprocess_variants.vcf_index}
-    IndexData gvcf = {"data": deepvariant_postprocess_variants.gvcf, "index": deepvariant_postprocess_variants.gvcf_index}
-  }
-
-  parameter_meta {
-    sample_id: {help: "Sample ID; used for naming files"}
-    aligned_bams: {help: "Bam and index aligned to the reference genome for each movie associated with all samples in the cohort"}
-    reference: {help: "Reference genome data"}
-    deepvariant_version: {help: "Version of deepvariant to use"}
-    default_runtime_attributes: {help: "Default RuntimeAttributes; spot if preemptible was set to true, otherwise on_demand"}
+    File vcf = deepvariant_postprocess_variants.vcf
+    File vcf_index = deepvariant_postprocess_variants.vcf_index
+    File gvcf = deepvariant_postprocess_variants.gvcf
+    File gvcf_index = deepvariant_postprocess_variants.gvcf_index
   }
 }
 
@@ -85,7 +76,7 @@ task deepvariant_make_examples {
   input {
     String sample_id
     Array[File] aligned_bams
-    Array[File] aligned_bam_indices
+    Array[File] aligned_bam_indexes
 
     File reference
     File reference_index

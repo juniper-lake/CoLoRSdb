@@ -33,7 +33,7 @@ lint:
 
 .PHONY: lint-wdl  ## Lint WDL files with miniwdl
 lint-wdl:
-	./.venv/bin/pre-commit run miniwdl --all-files
+	./.venv/bin/pre-commit run miniwdl-check --all-files
 
 .PHONY: codespell  ## Spell-check staged files with codespell
 codespell:
@@ -42,6 +42,10 @@ codespell:
 .PHONY: mypy  ## Perform type-checking on staged files with mypy
 mypy:
 	./.venv/bin/pre-commit run mypy --all-files
+
+.PHONY: test-wdl ## Run full WDL test
+test-wdl:
+	.venv/bin/miniwdl run --verbose --cfg miniwdl.cfg --dir miniwdl_execution wdl/workflows/colors_main.wdl cohort_id=test_small sample_sheet=../sample_sheets/test.small.tsv reference_bundle=../colorsdb.v1.0.1.resources.tgz backend=HPC preemptible=false
 
 .PHONY: clean  ## Clean unused files
 clean:

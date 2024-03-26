@@ -1,24 +1,9 @@
 version 1.0
 
-struct IndexData {
-  File data
-  File index
-}
-
-struct Sample {
-  String sample_id
-  Array[File]+ movies
-}
-
-struct AlignedSample {
-  String sample_id
-  IndexData aligned_bam
-  String sex
-}
-
 struct ReferenceData {
   String name
-  IndexData fasta
+  File fasta
+  File fasta_index
   Array[String]+ chromosomes
   Array[String]+ autosomes
   File non_diploid_regions
@@ -26,7 +11,8 @@ struct ReferenceData {
   File somalier_sites_vcf
 
   Array[File]? trgt_tandem_repeat_beds
-  IndexData? hificnv_exclude_bed
+  File? hificnv_exclude_bed
+  File? hificnv_exclude_bed_index
   File? hificnv_expected_bed_male
   File? hificnv_expected_bed_female
   File? peddy_sites

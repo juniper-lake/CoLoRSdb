@@ -36,7 +36,7 @@ task pbsv_discover {
 
   runtime {
     cpu: 2
-    memory: "8 GB"
+    memory: "12 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries
