@@ -26,6 +26,7 @@ task jasminesv_merge_svs {
 
     jasmine \
       --output_genotypes \
+      --allow_intrasample \
       --comma_filelist \
       threads=~{threads} \
       file_list=~{sep="," vcfs} \

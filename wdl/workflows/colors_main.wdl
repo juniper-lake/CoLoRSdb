@@ -13,7 +13,7 @@ workflow colors_main {
     Boolean align_qc_only = false
 
     File reference_bundle
-    Boolean anonymize_output = true
+    Boolean anonymize_output = false
 
     # backend configuration
     String backend
