@@ -116,7 +116,7 @@ task reset_bams_and_qc {
         if [ $(cut -f6 peekabam_out.tsv) = false ]; then
           qc_pass_bam=false;
         fi
-        awk '{print -v OFS='\t' "~{sample_id}", $0}' peekabam_out.tsv >> peekabam_with_ids.tsv
+        awk -v OFS='\t' '{print "~{sample_id}", $0}' peekabam_out.tsv >> peekabam_with_ids.tsv
       fi
     done
 
