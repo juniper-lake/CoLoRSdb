@@ -133,6 +133,7 @@ task somalier_extract {
 task somalier_relate_samples {
   input {
     String cohort_id
+    String reference_name
     Array[File] extracted_sites
     Array[String] sample_ids
     Array[Float] coverages
@@ -156,13 +157,13 @@ task somalier_relate_samples {
     somalier relate \
       --min-depth=6 \
       --min-ab=0.3 \
-      --output-prefix=~{cohort_id}.somalier \
+      --output-prefix=~{cohort_id}.~{reference_name}.somalier \
       --infer \
       ~{sep=" " extracted_sites}
 
     # find samples that have relatedness > max_pairwise_relatedness
     screen_related_samples.py \
-      ~{cohort_id}.somalier.pairs.tsv \
+      ~{cohort_id}.~{reference_name}.somalier.pairs.tsv \
       --max_relatedness ~{max_pairwise_relatedness} \
       --sample_order ~{sep=" " sample_ids} \
       --coverages ~{sep=" " coverages} \
@@ -171,10 +172,10 @@ task somalier_relate_samples {
     for SAMPLE_ID in ~{sep=" " sample_ids}; do
       awk -v sample=$SAMPLE_ID '$1==sample {print $2}' ~{cohort_id}.related_samples_to_remove.tsv >> keep_drop.txt
       awk -v sample=$SAMPLE_ID '$1==sample {print $3}' ~{cohort_id}.related_samples_to_remove.tsv >> n_relations.txt
-      SEX=$(awk -v sample=$SAMPLE_ID '$2==sample {print $5}' ~{cohort_id}.somalier.samples.tsv)
-      Y_N=$(awk -v sample=$SAMPLE_ID '$2==sample {print $25}' ~{cohort_id}.somalier.samples.tsv)
-      X_N=$(awk -v sample=$SAMPLE_ID '$2==sample {print $20}' ~{cohort_id}.somalier.samples.tsv)
-      X_HET=$(awk -v sample=$SAMPLE_ID '$2==sample {print $22}' ~{cohort_id}.somalier.samples.tsv)
+      SEX=$(awk -v sample=$SAMPLE_ID '$2==sample {print $5}' ~{cohort_id}.~{reference_name}.somalier.samples.tsv)
+      Y_N=$(awk -v sample=$SAMPLE_ID '$2==sample {print $25}' ~{cohort_id}.~{reference_name}.somalier.samples.tsv)
+      X_N=$(awk -v sample=$SAMPLE_ID '$2==sample {print $20}' ~{cohort_id}.~{reference_name}.somalier.samples.tsv)
+      X_HET=$(awk -v sample=$SAMPLE_ID '$2==sample {print $22}' ~{cohort_id}.~{reference_name}.somalier.samples.tsv)
       X_HET_PROP="$((100*X_HET/X_N))"
       if [ $SEX -eq 1 ]; then
         echo "male" >> inferred_sex.txt
@@ -193,10 +194,10 @@ task somalier_relate_samples {
   >>>
 
   output {
-    File? groups = "~{cohort_id}.somalier.groups.tsv"
-    File html = "~{cohort_id}.somalier.html"
-    File pairs = "~{cohort_id}.somalier.pairs.tsv"
-    File samples = "~{cohort_id}.somalier.samples.tsv"
+    File? groups = "~{cohort_id}.~{reference_name}.somalier.groups.tsv"
+    File html = "~{cohort_id}.~{reference_name}.somalier.html"
+    File pairs = "~{cohort_id}.~{reference_name}.somalier.pairs.tsv"
+    File samples = "~{cohort_id}.~{reference_name}.somalier.samples.tsv"
     Array[String] qc_related_keep_drop = read_lines("keep_drop.txt")
     Array[String] n_relations = read_lines("n_relations.txt")
     Array[String] inferred_sexes = read_lines("inferred_sex.txt")

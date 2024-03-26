@@ -9,6 +9,8 @@ task peddy {
     String cohort_id
     Array[String] sample_ids
 
+    String reference_name
+
     File vcf
     File vcf_index
 
@@ -43,19 +45,19 @@ task peddy {
     peddy \
       --procs ~{threads} \
       --sites peddy.sites \
-      --prefix ~{cohort_id} \
+      --prefix ~{cohort_id}.~{reference_name}.peddy \
       ~{vcf} \
       ~{cohort_id}.ped
   >>>
 
   output {
-    File het_check = "~{cohort_id}.het_check.csv"
-    File sex_check = "~{cohort_id}.sex_check.csv"
-    File ped_check = "~{cohort_id}.ped_check.csv"
-    File background_pca = "~{cohort_id}.background_pca.json"
-    File html = "~{cohort_id}.html"
-    File ped = "~{cohort_id}.peddy.ped"
-    File vs_html = "~{cohort_id}.vs.html"
+    File het_check = "~{cohort_id}.~{reference_name}.peddy.het_check.csv"
+    File sex_check = "~{cohort_id}.~{reference_name}.peddy.sex_check.csv"
+    File ped_check = "~{cohort_id}.~{reference_name}.peddy.ped_check.csv"
+    File background_pca = "~{cohort_id}.~{reference_name}.peddy.background_pca.json"
+    File html = "~{cohort_id}.~{reference_name}.peddy.html"
+    File ped = "~{cohort_id}.~{reference_name}.peddy.peddy.ped"
+    File vs_html = "~{cohort_id}.~{reference_name}.peddy.vs.html"
   }
 
   runtime {

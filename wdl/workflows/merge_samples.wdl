@@ -2,41 +2,34 @@ version 1.0
 
 # Joint call or combine variants for a cohort of samples
 
-import "../../tasks/glnexus.wdl" as Glnexus
-import "../../tasks/sniffles.wdl" as Sniffles
-import "../../tasks/hificnv.wdl" as Hificnv
-import "../../tasks/peddy.wdl" as Peddy
-import "../../tasks/vcfparser.wdl" as Vcfparser
-import "../../tasks/bcftools.wdl" as Bcftools
-import "../../tasks/jasminesv.wdl" as Jasminesv
+import "../tasks/glnexus.wdl" as Glnexus
+import "../tasks/sniffles.wdl" as Sniffles
+import "../tasks/hificnv.wdl" as Hificnv
+import "../tasks/peddy.wdl" as Peddy
+import "../tasks/vcfparser.wdl" as Vcfparser
+import "../tasks/bcftools.wdl" as Bcftools
+import "../tasks/jasminesv.wdl" as Jasminesv
 
-workflow cohort_combine_samples {
+workflow merge_samples {
   input {
     String cohort_id
     Boolean anonymize_output
 
     Array[String] sample_ids
     Array[String] sexes
-    Array[IndexData] pbsv_vcfs
+    Array[File] pbsv_vcfs
+    Array[File] pbsv_vcf_indexes
     Array[File] unzipped_pbsv_vcfs
-    Array[IndexData] deepvariant_gvcfs
+    Array[File] deepvariant_gvcfs
+    Array[File] deepvariant_gvcf_indexes
     Array[File] sniffles_snfs
     Array[Array[File?]] trgt_vcfs
-    Array[IndexData?] hificnv_vcfs
+    Array[File?] hificnv_vcfs
+    Array[File?] hificnv_vcf_indexes
 
     ReferenceData reference
 
     RuntimeAttributes default_runtime_attributes
-  }
-
-  scatter (gvcf_object in deepvariant_gvcfs) {
-    File deepvariant_gvcf = gvcf_object.data
-    File deepvariant_gvcf_index = gvcf_object.index
-  }
-
-  scatter (vcf_object in pbsv_vcfs) {
-    File pbsv_vcf = vcf_object.data
-    File pbsv_vcf_index = vcf_object.index
   }
 
   scatter (idx in range(length(sample_ids))) {
@@ -46,8 +39,8 @@ workflow cohort_combine_samples {
   # strict merge pbsv vcfs with bcftools
   call Bcftools.merge_vcfs as strict_merge_pbsv_vcfs {
     input:
-      vcfs = pbsv_vcf,
-      vcf_indexes = pbsv_vcf_index,
+      vcfs = pbsv_vcfs,
+      vcf_indexes = pbsv_vcf_indexes,
       output_prefix = "~{cohort_id}.~{reference.name}.pbsv.strictmerge",
       runtime_attributes = default_runtime_attributes
   }
@@ -94,8 +87,8 @@ workflow cohort_combine_samples {
       sample_id = cohort_id,
       snfs = sniffles_snfs,
       reference_name = reference.name,
-      reference_fasta = reference.fasta.data,
-      reference_index = reference.fasta.index,
+      reference_fasta = reference.fasta,
+      reference_index = reference.fasta_index,
       tr_bed = reference.tandem_repeat_bed,
       runtime_attributes = default_runtime_attributes
   }
@@ -132,8 +125,8 @@ workflow cohort_combine_samples {
   call Glnexus.glnexus {
     input:
       cohort_id = cohort_id,
-      gvcfs = deepvariant_gvcf,
-      gvcf_indexes = deepvariant_gvcf_index,
+      gvcfs = deepvariant_gvcfs,
+      gvcf_indexes = deepvariant_gvcf_indexes,
       reference_name = reference.name,
       runtime_attributes = default_runtime_attributes
   }
@@ -143,7 +136,7 @@ workflow cohort_combine_samples {
     input:
       vcf = glnexus.vcf,
       vcf_index = glnexus.vcf_index,
-      reference_fasta = reference.fasta.data,
+      reference_fasta = reference.fasta,
       chromosomes = reference.chromosomes,
       runtime_attributes = default_runtime_attributes
   }
@@ -165,6 +158,7 @@ workflow cohort_combine_samples {
       input:
         cohort_id = cohort_id,
         sample_ids = sample_ids,
+        reference_name = reference.name,
         vcf = glnexus.vcf,
         vcf_index = glnexus.vcf_index,
         peddy_sites = select_first([reference.peddy_sites]),
@@ -184,14 +178,9 @@ workflow cohort_combine_samples {
           trgt_bed = select_first([reference.trgt_tandem_repeat_beds])[idx],
           cohort_id = cohort_id,
           reference_name = reference.name,
-          reference_index = reference.fasta.index,
+          reference_index = reference.fasta_index,
           anonymize_output = false,
           runtime_attributes = default_runtime_attributes
-      }
-
-      IndexData merged_trgt = {
-        "data": merge_trgt_vcfs.merged_vcf,
-        "index": merge_trgt_vcfs.merged_vcf_index
       }
 
       # postprocess trgt if anonymize_output=true, otherwise trgt already fixes ploidy
@@ -203,36 +192,21 @@ workflow cohort_combine_samples {
             anonymize_output = anonymize_output,
             runtime_attributes = default_runtime_attributes
         }
-
-        IndexData postprocessed_trgt = {
-          "data": postprocess_trgt_vcf.postprocessed_vcf,
-          "index": postprocess_trgt_vcf.postprocessed_vcf_index
-        }
       }
     }
-
-    Array[IndexData] postprocessed_trgts = select_all(postprocessed_trgt)
+    Array[File] trgt_postprocessed_vcfs_temp = select_all(postprocess_trgt_vcf.postprocessed_vcf)
+    Array[File] trgt_postprocessed_vcf_indexes_temp = select_all(postprocess_trgt_vcf.postprocessed_vcf_index)
   }
 
-  if (length(hificnv_vcfs) > 0) {
-      scatter (vcf_object in select_all(hificnv_vcfs)) {
-        File hificnv_vcf_data = vcf_object.data
-        File hificnv_vcf_index = vcf_object.index
-      }
-
+  if (length(select_all(hificnv_vcfs)) > 0) {
     # merge hificnv vcfs
     call Hificnv.merge_hificnv_vcfs {
       input:
-        cnv_vcfs = hificnv_vcf_data,
-        cnv_vcf_indexes = hificnv_vcf_index,
+        cnv_vcfs = select_all(hificnv_vcfs),
+        cnv_vcf_indexes = select_all(hificnv_vcf_indexes),
         cohort_id = cohort_id,
         reference_name = reference.name,
         runtime_attributes = default_runtime_attributes
-    }
-
-    IndexData merged_hificnv = {
-      "data": merge_hificnv_vcfs.merged_cnv_vcf,
-      "index": merge_hificnv_vcfs.merged_cnv_vcf_index
     }
 
     # postprocess hificnv
@@ -245,55 +219,40 @@ workflow cohort_combine_samples {
         anonymize_output = anonymize_output,
         runtime_attributes = default_runtime_attributes
     }
-
-    IndexData postprocessed_hificnv = {
-      "data": postprocess_hificnv_vcf.postprocessed_vcf,
-      "index": postprocess_hificnv_vcf.postprocessed_vcf_index
-    }
   }
 
   output {
     # postprocessed VCFs
-    IndexData deepvariant_glnexus_postprocessed_vcf = {
-      "data": postprocess_deepvariant_vcf.postprocessed_vcf,
-      "index": postprocess_deepvariant_vcf.postprocessed_vcf_index
-    }
-    IndexData pbsv_jasminesv_postprocessed_vcf = {
-      "data": postprocess_pbsv_vcf.postprocessed_vcf,
-      "index": postprocess_pbsv_vcf.postprocessed_vcf_index
-    }
-    IndexData sniffles_postprocessed_vcf = {
-      "data": postprocess_sniffles_vcf.postprocessed_vcf,
-      "index": postprocess_sniffles_vcf.postprocessed_vcf_index
-    }
-    Array[IndexData]? trgt_postprocessed_vcf = postprocessed_trgts
-    IndexData? hificnv_postprocessed_vcf = postprocessed_hificnv
+    File deepvariant_glnexus_postprocessed_vcf = postprocess_deepvariant_vcf.postprocessed_vcf
+    File deepvariant_glnexus_postprocessed_vcf_index = postprocess_deepvariant_vcf.postprocessed_vcf_index
+    File pbsv_jasminesv_postprocessed_vcf = postprocess_pbsv_vcf.postprocessed_vcf
+    File pbsv_jasminesv_postprocessed_vcf_index = postprocess_pbsv_vcf.postprocessed_vcf_index
+    File sniffles_postprocessed_vcf = postprocess_sniffles_vcf.postprocessed_vcf
+    File sniffles_postprocessed_vcf_index = postprocess_sniffles_vcf.postprocessed_vcf_index
+    Array[File]? trgt_postprocessed_vcfs = trgt_postprocessed_vcfs_temp
+    Array[File]? trgt_postprocessed_vcf_indexes = trgt_postprocessed_vcf_indexes_temp
+    File? hificnv_postprocessed_vcf = postprocess_hificnv_vcf.postprocessed_vcf
+    File? hificnv_postprocessed_vcf_index = postprocess_hificnv_vcf.postprocessed_vcf_index
 
     # original VCFs, so if anonymize_output=false we can access VCFs without ploidy changes
-    IndexData deepvariant_glnexus_vcf = {
-      "data": filter_norm_deepvariant.normalized_vcf,
-      "index": filter_norm_deepvariant.normalized_vcf_index
-    }
-    IndexData sniffles_vcf = {
-      "data": filter_zip_index_sniffles.zipped_vcf,
-      "index": filter_zip_index_sniffles.zipped_vcf_index
-    }
-    IndexData pbsv_strictmerge_vcf = {
-      "data": strict_merge_pbsv_vcfs.merged_vcf,
-      "index": strict_merge_pbsv_vcfs.merged_vcf_index
-    }
-    IndexData pbsv_jasminesv_vcf = {
-      "data": reheader_zip_index_jasminesv.zipped_vcf,
-      "index": reheader_zip_index_jasminesv.zipped_vcf_index
-    }
-    Array[IndexData]? trgt_vcf = merged_trgt
-    IndexData? hificnv_vcf = merged_hificnv
+    File deepvariant_glnexus_vcf = filter_norm_deepvariant.normalized_vcf
+    File deepvariant_glnexus_vcf_index = filter_norm_deepvariant.normalized_vcf_index
+    File sniffles_vcf = filter_zip_index_sniffles.zipped_vcf
+    File sniffles_vcf_index = filter_zip_index_sniffles.zipped_vcf_index
+    File pbsv_strictmerge_vcf = strict_merge_pbsv_vcfs.merged_vcf
+    File pbsv_strictmerge_vcf_index = strict_merge_pbsv_vcfs.merged_vcf_index
+    File pbsv_jasminesv_vcf = reheader_zip_index_jasminesv.zipped_vcf
+    File pbsv_jasminesv_vcf_index = reheader_zip_index_jasminesv.zipped_vcf_index
+    Array[File]? trgt_vcf = merge_trgt_vcfs.merged_vcf
+    Array[File]? trgt_vcf_index = merge_trgt_vcfs.merged_vcf_index
+    File? hificnv_vcf = merge_hificnv_vcfs.merged_cnv_vcf
+    File? hificnv_vcf_index = merge_hificnv_vcfs.merged_cnv_vcf_index
 
-    # VCF stats
+    # vcf stats
     File pbsv_jasminesv_vcf_stats = pbsv_jasminesv_stats.stats
     File sniffles_vcf_stats = sniffles_stats.stats
 
-    # Ancestry when peddy is run
+    # ancestry when peddy is run
     File? peddy_het_check = peddy.het_check
     File? peddy_sex_check = peddy.sex_check
     File? peddy_ped_check = peddy.ped_check

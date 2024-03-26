@@ -2,22 +2,21 @@ version 1.0
 
 # Call variants for a single sample
 
-import "../../tasks/sniffles.wdl" as Sniffles
-import "../../tasks/pbsv.wdl" as Pbsv
-import "../deepvariant/deepvariant.wdl" as DeepVariant
-import "../../tasks/trgt.wdl" as Trgt
-import "../../tasks/hificnv.wdl" as Hificnv
-import "../../tasks/bcftools.wdl" as Bcftools
+import "../tasks/sniffles.wdl" as Sniffles
+import "../tasks/pbsv.wdl" as Pbsv
+import "deepvariant.wdl" as DeepVariant
+import "../tasks/trgt.wdl" as Trgt
+import "../tasks/hificnv.wdl" as Hificnv
+import "../tasks/bcftools.wdl" as Bcftools
 
-workflow sample_call_variants {
+workflow call_variants_by_sample {
   input {
     String sample_id
-    IndexData aligned_bam
     String sex
+    File aligned_bam
+    File aligned_bam_index
 
     ReferenceData reference
-
-    String deepvariant_version
 
     RuntimeAttributes default_runtime_attributes
   }
@@ -26,8 +25,8 @@ workflow sample_call_variants {
     # discover SV signatures with pbsv
     call Pbsv.pbsv_discover {
       input:
-        bam = aligned_bam.data,
-        bam_index = aligned_bam.index,
+        bam = aligned_bam,
+        bam_index = aligned_bam_index,
         region = reference.chromosomes[idx],
         tandem_repeat_bed = reference.tandem_repeat_bed,
         runtime_attributes = default_runtime_attributes
@@ -40,8 +39,8 @@ workflow sample_call_variants {
         svsigs = [pbsv_discover.svsig],
         region = reference.chromosomes[idx],
         reference_name = reference.name,
-        reference_fasta = reference.fasta.data,
-        reference_index = reference.fasta.index,
+        reference_fasta = reference.fasta,
+        reference_index = reference.fasta_index,
         runtime_attributes = default_runtime_attributes
     }
   }
@@ -58,10 +57,10 @@ workflow sample_call_variants {
   call Sniffles.sniffles_discover {
     input:
       sample_id = sample_id,
-      bam = aligned_bam.data,
-      bam_index = aligned_bam.index,
-      reference_fasta = reference.fasta.data,
-      reference_index = reference.fasta.index,
+      bam = aligned_bam,
+      bam_index = aligned_bam_index,
+      reference_fasta = reference.fasta,
+      reference_index = reference.fasta_index,
       tandem_repeat_bed = reference.tandem_repeat_bed,
       runtime_attributes = default_runtime_attributes
   }
@@ -71,9 +70,10 @@ workflow sample_call_variants {
     input:
       sample_id = sample_id,
       aligned_bams = [aligned_bam],
+      aligned_bam_indexes = [aligned_bam_index],
       reference_name = reference.name,
       reference_fasta = reference.fasta,
-      deepvariant_version = deepvariant_version,
+      reference_fasta_index = reference.fasta_index,
       default_runtime_attributes = default_runtime_attributes
   }
 
@@ -83,10 +83,10 @@ workflow sample_call_variants {
       call Trgt.trgt {
         input:
           sex = sex,
-          bam = aligned_bam.data,
-          bam_index = aligned_bam.index,
-          reference_fasta = reference.fasta.data,
-          reference_index = reference.fasta.index,
+          bam = aligned_bam,
+          bam_index = aligned_bam_index,
+          reference_fasta = reference.fasta,
+          reference_index = reference.fasta_index,
           tandem_repeat_bed = trgt_bed,
           runtime_attributes = default_runtime_attributes
       }
@@ -100,34 +100,30 @@ workflow sample_call_variants {
         input:
           sample_id = sample_id,
           sex = sex,
-          bam = aligned_bam.data,
-          bam_index = aligned_bam.index,
-          small_variant_vcf = deepvariant.vcf.data,
-          small_variant_vcf_index = deepvariant.vcf.index,
+          bam = aligned_bam,
+          bam_index = aligned_bam_index,
+          small_variant_vcf = deepvariant.vcf,
+          small_variant_vcf_index = deepvariant.vcf_index,
           reference_name = reference.name,
-          reference = reference.fasta.data,
-          reference_index = reference.fasta.index,
-          exclude_bed = select_first([reference.hificnv_exclude_bed]).data,
-          exclude_bed_index = select_first([reference.hificnv_exclude_bed]).index,
+          reference = reference.fasta,
+          reference_index = reference.fasta_index,
+          exclude_bed = select_first([reference.hificnv_exclude_bed]),
+          exclude_bed_index = select_first([reference.hificnv_exclude_bed_index]),
           expected_bed_male = select_first([reference.hificnv_expected_bed_male]),
           expected_bed_female = select_first([reference.hificnv_expected_bed_female]),
           runtime_attributes = default_runtime_attributes
       }
-
-      IndexData hificnv_indexed_vcf = {
-        "data": hificnv.cnv_vcf,
-        "index": hificnv.cnv_vcf_index}
     }
 
   output {
     File sniffles_snf = sniffles_discover.snf
     File unzipped_pbsv_vcf = concat_pbsv_vcfs.concatenated_vcf
-    IndexData pbsv_vcf = {
-      "data": concat_pbsv_vcfs.concatenated_zipped_vcf,
-      "index": concat_pbsv_vcfs.concatenated_zipped_vcf_index
-      }
-    IndexData deepvariant_gvcf = deepvariant.gvcf
+    File pbsv_vcf = concat_pbsv_vcfs.concatenated_zipped_vcf
+    File pbsv_vcf_index = concat_pbsv_vcfs.concatenated_zipped_vcf_index
+    File deepvariant_gvcf = deepvariant.gvcf
+    File deepvariant_gvcf_index = deepvariant.gvcf_index
     Array[File]? trgt_vcf = trgt.repeat_vcf
-    IndexData? hificnv_vcf = hificnv_indexed_vcf
+    File? hificnv_vcf = hificnv.cnv_vcf
+    File? hificnv_vcf_index = hificnv.cnv_vcf_index
   }
 }
