@@ -37,7 +37,7 @@ There are two files that need to be copied to the working directory and edited t
 First, copy them to your working directory. Don't move these files from their original locations because some are used for testing.
 
 ```
-cp CoLoRSdb/wdl/tests/test_data/sample_sheet.tsv CoLoRSdb/docs/sources/miniwdl.cfg .
+cp CoLoRSdb/wdl/tests/test_data/sample_sheet.tsv CoLoRSdb/wdl/tests/miniwdl.cfg .
 ```
 
 Second, edit the files with your favorite editor.
@@ -72,7 +72,6 @@ source .venv/bin/activate
 miniwdl run --verbose \
   --cfg miniwdl.cfg \
   --dir miniwdl_execution \
-  --input inputs.hpc.grch38.json \
   CoLoRSdb/wdl/workflows/colors_main.wdl \
   cohort_id=<your_cohort_id> \
   sample_sheet=<path/to/sample_sheet.tsv> \
