@@ -69,16 +69,23 @@ source .venv/bin/activate
 
 # run your workflow on GRCh38
 # replace anything in <> with your own info
+# the `anonymize_output` option
 miniwdl run --verbose \
   --cfg miniwdl.cfg \
   --dir miniwdl_execution \
   CoLoRSdb/wdl/workflows/colors_main.wdl \
   cohort_id=<your_cohort_id> \
   sample_sheet=<path/to/sample_sheet.tsv> \
+  anonymize_output=false \
   reference_bundle=colorsdb.v1.0.1.resources.tgz \
   backend=HPC \
   preemptible=false
 ```
+
+Set the `anonymize_output` option to:
+
+- `false`: if you can share sample-level data (i.e. multi-sample VCFs) with PacBio-affiliated members of the analysis team. This is the preferred option and allows us to more accurately merge variants between cohorts downstream. After cohort merging, data is aggregated to summary statistics.
+- `true`: if you CANNOT share sample-level data with PacBio. Only randomized data is output by the workflow.
 
 ## AnViL/Terra Quickstart
 
