@@ -80,29 +80,34 @@ workflow colors_main {
     if (!align_qc_only) {
       scatter (idx in range(length(read_sample_sheet.sample_ids))) {
         if (select_first([override_qc_pass[idx], align_qc.qc_pass[idx]])) {
+          String qc_pass_sample_id = read_sample_sheet.sample_ids[idx]
+          String qc_pass_sex = select_first([override_sex[idx], align_qc.sexes[idx]])
+        }
+      }
+
+      Int n_samples = length(select_all(qc_pass_sample_id))
+
+      # continue only if more than one sample had variants called
+      if (n_samples > 1) {
+        scatter (idx in range(n_samples)) {
           call CallVariantsBySample.call_variants_by_sample {
             input:
-              sample_id = read_sample_sheet.sample_ids[idx],
-              sex = select_first([override_sex[idx], align_qc.sexes[idx]]),
+              sample_id = select_all(qc_pass_sample_id)[idx],
+              sex = select_all(qc_pass_sex)[idx],
               aligned_bam = align_qc.aligned_bams[idx],
               aligned_bam_index = align_qc.aligned_bam_indexes[idx],
               reference = reference,
               default_runtime_attributes = default_runtime_attributes
           }
         }
-      }
-
-      Int n_samples = length(select_all(call_variants_by_sample.sniffles_snf))
-      # continue only if more than one sample had variants called
-      if (n_samples > 1) {
 
         # merge samples
         call MergeSamples.merge_samples {
           input:
             cohort_id = cohort_id,
             anonymize_output = anonymize_output,
-            sample_ids = read_sample_sheet.sample_ids,
-            sexes = align_qc.sexes,
+            sample_ids = select_all(qc_pass_sample_id),
+            sexes = select_all(qc_pass_sex),
             pbsv_vcfs = select_all(call_variants_by_sample.pbsv_vcf),
             pbsv_vcf_indexes = select_all(call_variants_by_sample.pbsv_vcf_index),
             unzipped_pbsv_vcfs = select_all(call_variants_by_sample.unzipped_pbsv_vcf),
@@ -121,7 +126,7 @@ workflow colors_main {
 
   output {
     # messages
-    String message = if (select_first(n_samples) < 2) then "At least two samples passing QC are required to merge variants." else "Variants were called and merged for ~{select_first(n_samples)} samples."
+    String message = if (select_first(n_samples) < 2) then "At least two samples passing QC are required to call variants." else "Variants were called and merged for ~{select_first(n_samples)} samples."
 
     # align and qc
     Array[File] somalier_pairs = align_qc.somalier_pairs

@@ -104,10 +104,6 @@ task reset_bams_and_qc {
         if [ $(cut -f3 peekabam_out.tsv) = true ]; then
           qc_pass_bam=false;
         fi
-        # if not demultiplexed, fail
-        if [ $(cut -f4 peekabam_out.tsv) = false ]; then
-          qc_pass_bam=false;
-        fi
         # if not ccs, fail
         if [ $(cut -f5 peekabam_out.tsv) = false ]; then
           qc_pass_bam=false;
