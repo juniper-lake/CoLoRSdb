@@ -19,7 +19,7 @@ This sections describes running the workflow with MiniWDL on a SLURM job schedul
 
 ```
 # clone github repo
-git clone https://github.com/juniper-lake/CoLoRSdb.git
+git clone https://github.com/juniper-lake/CoLoRSdb.git --branch v0.1.0
 
 # make virtual environment and install dependencies
 python3 -m venv .venv
