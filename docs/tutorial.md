@@ -2,11 +2,9 @@
 
 **Please [contact Juniper Lake by email](mailto:jlake@pacificbiosciences.com) before attempting to run this workflow. This is NOT a development-level workflow and requires special instructions.**
 
-## HPC Quickstart
+## HPC Quickstart (SLURM+MiniWDL or Cromwell)
 
-This sections describes running the workflow with MiniWDL on a SLURM job scheduler.
-
-### Requirements
+If running with SLURM+MiniWDL, the following requirements must be met.
 
 - Your HPC job scheduler should be SLURM
 - Python3
@@ -19,73 +17,73 @@ This sections describes running the workflow with MiniWDL on a SLURM job schedul
 
 ```
 # clone github repo
-git clone https://github.com/juniper-lake/CoLoRSdb.git --branch v0.1.0
-
-# make virtual environment and install dependencies
-python3 -m venv .venv
-./.venv/bin/pip install -U pip
-./.venv/bin/pip install miniwdl>=1.9.1 miniwdl-slurm
+git clone https://github.com/juniper-lake/CoLoRSdb.git
 
 # download and unzip required reference files
 wget https://zenodo.org/records/10277930/files/colorsdb.v1.0.1.resources.tgz
+
+# if using miniwdl, make virtual environment and install dependencies
+python3 -m venv .venv
+./.venv/bin/pip install -U pip
+./.venv/bin/pip install miniwdl>=1.9.1 miniwdl-slurm
 ```
 
 ### 2. Create your input/configuration files
 
-There are two files that need to be copied to the working directory and edited to specify the correct inputs and workflow configuration.
+Create your own [sample sheet TSV](templates/sample_sheet.tsv) and [inputs JSON](templates/input_template.json) based on the linked templates. Detailed description of inputs are below.
 
-First, copy them to your working directory. Don't move these files from their original locations because some are used for testing.
+| Input | Type | Description |
+| --- | --- | --- |
+| cohort_id | String | Name of the cohort, e.g. "HPRC" |
+| sample_sheet | File | TSV where first column is sample IDs, which should have no spaces or special characters except underscores. The second column is a comma-separated list of HiFi movies (FASTQ or BAM) associated with the sample. BAMs can be aligned or unaligned |
+| reference_bundle | File | Zipped tarball of reference files downloaded according to above instructions, i.e. "colorsdb.v1.0.1.resources.tgz" |
+| anonymize_output | Boolean | Set to `false` if you can share sample-level data (i.e. multi-sample VCFs) with PacBio-affiliated members of the analysis team. This is the preferred option and allows us to more accurately merge variants between cohorts downstream. After cohort merging, data is aggregated to summary statistics and variants that can be uniquely associated with any single sample are removed. Set to `true` if you CANNOT share sample-level data with PacBio. Only randomized data is output by the workflow. See how data is randomized [here](images/anonymize_output_example.png) |
+| backend | String | Can be "HPC", "AnViL", "AWS", "Azure", or "GCP" depending on your backend |
+| preemptible | Boolean | Set to `true` to run tasks preemptibly where possible. Set to `false` to use on-demand VMs for every task. Ignored if backend is set to HPC |
 
-```
-cp CoLoRSdb/wdl/tests/test_data/sample_sheet.tsv CoLoRSdb/wdl/tests/miniwdl.cfg .
-```
+### 3. Configure and test MiniWDL (Cromwell users can skip)
 
-Second, edit the files with your favorite editor.
-
-- Update `miniwdl.cfg` so it will run correctly on your system. Please see the [default miniwdl config](https://github.com/chanzuckerberg/miniwdl/blob/main/WDL/runtime/config_templates/default.cfg) and the [miniwdl-slurm config example](https://github.com/miniwdl-ext/miniwdl-slurm#configuration) for more details.
-- Replace sample info in `sample_sheet.tsv` with your own. First column is sample IDs, which should have no spaces or special characters except underscores. The second column is a comma-separated list of HiFi movies (FASTQ or BAM) associated with the sample.
-
-### 3. Test to make sure miniwdl works
-
-> [!WARNING]
-> You cannot launch miniwdl on SLURM from an interactive `srun` session.
+- Create a [miniwdl config file](templates/miniwdl.cfg) using the linked template. For additional miniwdl configuration details, please see the [default miniwdl config](https://github.com/chanzuckerberg/miniwdl/blob/main/WDL/runtime/config_templates/default.cfg) and a [miniwdl-slurm config example](https://github.com/miniwdl-ext/miniwdl-slurm#configuration).
 
 ```
 # activate your virtual environment
 source .venv/bin/activate
 
 # test miniwdl and miniwdl-slurm, this should complete quickly
+# replace anything in <> with your own info
 miniwdl run --verbose \
   --dir miniwdl_execution/tests \
-  --cfg miniwdl.cfg \
+  --cfg <path/to/your/miniwdl.cfg> \
   CoLoRSdb/wdl/tests/hello.wdl
 ```
 
 ### 4. Run the workflow
 
+#### MiniWDL
+
+> [!WARNING]
+> You cannot launch miniwdl on SLURM from an interactive `srun` session or from an `sbatch` job. You must run from a login node.
+
 ```
 # activate your virtual environment if not already activated
 source .venv/bin/activate
 
-# run your workflow on GRCh38
 # replace anything in <> with your own info
-# the `anonymize_output` option
 miniwdl run --verbose \
-  --cfg miniwdl.cfg \
+  --cfg <path/to/your/miniwdl.cfg> \
   --dir miniwdl_execution \
-  CoLoRSdb/wdl/workflows/colors_main.wdl \
-  cohort_id=<your_cohort_id> \
-  sample_sheet=<path/to/sample_sheet.tsv> \
-  anonymize_output=false \
-  reference_bundle=colorsdb.v1.0.1.resources.tgz \
-  backend=HPC \
-  preemptible=false
+  --input <path/to/your/inputs.json> \
+  CoLoRSdb/wdl/workflows/colors_main.wdl
 ```
 
-Set the `anonymize_output` option to:
+#### Cromwell
 
-- `false`: if you can share sample-level data (i.e. multi-sample VCFs) with PacBio-affiliated members of the analysis team. This is the preferred option and allows us to more accurately merge variants between cohorts downstream. After cohort merging, data is aggregated to summary statistics.
-- `true`: if you CANNOT share sample-level data with PacBio. Only randomized data is output by the workflow.
+```
+# replace anything in <> with your own info
+cromwell run \
+  CoLoRSdb/wdl/workflows/colors_main.wdl \
+  --inputs <path/to/your/inputs.json>
+```
 
 ## AnViL/Terra Quickstart
 

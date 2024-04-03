@@ -1,0 +1,8 @@
+{
+  "colors_main.cohort_id": "String",
+  "colors_main.sample_sheet": "File",
+  "colors_main.reference_bundle": "File",
+  "colors_main.anonymize_output": "Boolean",
+  "colors_main.backend": "String ['AnViL', 'GCP', 'Azure', 'AWS', or 'HPC']",
+  "colors_main.preemptible": "Boolean"
+}
