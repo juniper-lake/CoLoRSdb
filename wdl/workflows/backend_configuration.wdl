@@ -109,7 +109,7 @@ workflow backend_configuration {
     # No distinction between preemptible and on-demand in HPC configuration
     RuntimeAttributes hpc_runtime_attributes = {
       "preemptible_tries": 0,
-      "max_retries": 0,
+      "max_retries": 3,
       "zones": "",
       "queue_arn": "",
       "container_registry": container_registry
