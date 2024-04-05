@@ -102,8 +102,8 @@ task combine_smrtcell_stats {
   }
 
   runtime {
-    cpu: 1
-    memory: "2 GB"
+    cpu: 2
+    memory: "4 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries

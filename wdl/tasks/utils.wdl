@@ -153,8 +153,8 @@ task unzip_reference_bundle {
   }
 
   runtime {
-    cpu: 1
-    memory: "1 GB"
+    cpu: 2
+    memory: "4 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries
@@ -211,8 +211,8 @@ task read_sample_sheet {
   }
 
   runtime {
-    cpu: 1
-    memory: "1 GB"
+    cpu: 2
+    memory: "4 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries
@@ -296,8 +296,8 @@ task summarize_qc {
 
   }
   runtime {
-    cpu: 1
-    memory: "1 GB"
+    cpu: 2
+    memory: "4 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries

@@ -58,7 +58,7 @@ task postprocess_joint_vcf {
 
   runtime {
     cpu: threads
-    memory: "4 GB"
+    memory: "8 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries
@@ -122,7 +122,7 @@ task merge_trgt_vcfs {
 
   runtime {
     cpu: threads
-    memory: "4 GB"
+    memory: "8 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries

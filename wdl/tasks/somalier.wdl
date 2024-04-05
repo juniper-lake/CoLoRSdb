@@ -98,7 +98,6 @@ task somalier_extract {
 
   String out_dir = select_first([sample_prefix, "extracted"])
   Int disk_size = ceil((size(bam, "GB") + size(reference_fasta, "GB")) * 2.5 + 5)
-  Int threads = 1
 
   command<<<
     set -euo pipefail
@@ -117,7 +116,7 @@ task somalier_extract {
   }
 
   runtime {
-    cpu: threads
+    cpu: 2
     memory: "8 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
@@ -143,7 +142,6 @@ task somalier_relate_samples {
   }
 
   Int disk_size = 20 # might want to increase this
-  Int threads = 1
 
   command<<<
     set -euo pipefail
@@ -204,7 +202,7 @@ task somalier_relate_samples {
   }
 
   runtime {
-    cpu: threads
+    cpu: 2
     memory: "8 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
