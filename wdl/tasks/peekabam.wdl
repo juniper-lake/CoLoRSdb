@@ -12,7 +12,6 @@ task peek_a_bam {
   }
 
   Int disk_size = ceil((size(bam, "GB")) * 1.5 + 5)
-  Int threads = 1
 
   command<<<
     set -euo pipefail
@@ -63,7 +62,7 @@ task peek_a_bam {
   }
 
   runtime {
-    cpu: threads
+    cpu: 2
     memory: "4 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"

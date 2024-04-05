@@ -39,7 +39,7 @@ task merge_bams {
 
   runtime {
     cpu: threads
-    memory: "1 GB"
+    memory: "16 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries
@@ -128,7 +128,7 @@ task reset_bams_and_qc {
 
   runtime {
     cpu: threads
-    memory: "1 GB"
+    memory: "16 GB"
     disk: "~{disk_size} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: runtime_attributes.preemptible_tries
