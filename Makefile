@@ -45,7 +45,7 @@ mypy:
 
 .PHONY: test-wdl ## Run full WDL test
 test-wdl:
-	.venv/bin/miniwdl run --verbose --cfg miniwdl.cfg --dir miniwdl_execution wdl/workflows/colors_main.wdl cohort_id=test_small sample_sheet=../sample_sheets/test.small.tsv reference_bundle=../colorsdb.v1.0.1.resources.tgz backend=HPC preemptible=false
+	.venv/bin/miniwdl run --verbose --cfg miniwdl.cfg --dir miniwdl_execution wdl/workflows/colors_main.wdl cohort_id=test_small sample_sheet=../sample_sheets/test.small.tsv reference_bundle=../colorsdb.v1.0.1.resources.tgz backend=HPC preemptible=false anonymize_output=true
 
 .PHONY: clean  ## Clean unused files
 clean:

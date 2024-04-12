@@ -52,11 +52,11 @@ workflow colors_main {
 
   scatter (sample_idx in range(length(read_sample_sheet.sample_ids))) {
     # override sample qc as a determinant of if variants are called
-    if (read_sample_sheet.qc_pass[sample_idx]=="true" || read_sample_sheet.qc_pass[sample_idx]=="false") {
+    if (read_sample_sheet.qc_pass[sample_idx]!="null") {
       Boolean override_qc_pass = if read_sample_sheet.qc_pass[sample_idx] == "true" then true else false
     }
     # override sex
-    if (read_sample_sheet.sexes[sample_idx] == "male" || read_sample_sheet.sexes[sample_idx] == "female") {
+    if (read_sample_sheet.sexes[sample_idx] != "null") {
       String override_sex = read_sample_sheet.sexes[sample_idx]
     }
   }
