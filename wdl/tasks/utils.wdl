@@ -21,10 +21,10 @@ task unzip_reference_bundle {
 
   output {
     ReferenceData grch38 = object {
-      "name": "GRCh38",
-      "fasta": "colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.fasta",
-      "fasta_index": "colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.fasta.fai",
-      "chromosomes": [
+      name: "GRCh38",
+      fasta: "colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.fasta",
+      fasta_index: "colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.fasta.fai",
+      chromosomes: [
         "chr1",
         "chr2",
         "chr3",
@@ -51,7 +51,7 @@ task unzip_reference_bundle {
         "chrY",
         "chrM"
     ],
-    "autosomes": [
+    autosomes: [
       "chr1",
       "chr2",
       "chr3",
@@ -75,27 +75,27 @@ task unzip_reference_bundle {
       "chr21",
       "chr22"
     ],
-    "non_diploid_regions": "colorsdb_resources/GRCh38/vcfparser.GRCh38.ploidy.txt",
-    "hificnv_exclude_bed": "colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.hg38.bed.gz",
-    "hificnv_exclude_bed_index": "colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.hg38.bed.gz.tbi",
-    "hificnv_expected_bed_male": "colorsdb_resources/GRCh38/hificnv.male_expected_cn.hg38.bed",
-    "hificnv_expected_bed_female": "colorsdb_resources/GRCh38/hificnv.female_expected_cn.hg38.bed",
-    "tandem_repeat_bed": "colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.trf.bed",
-    "trgt_tandem_repeat_beds": [
+    non_diploid_regions: "colorsdb_resources/GRCh38/vcfparser.GRCh38.ploidy.txt",
+    hificnv_exclude_bed: "colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.hg38.bed.gz",
+    hificnv_exclude_bed_index: "colorsdb_resources/GRCh38/hificnv.cnv.excluded_regions.hg38.bed.gz.tbi",
+    hificnv_expected_bed_male: "colorsdb_resources/GRCh38/hificnv.male_expected_cn.hg38.bed",
+    hificnv_expected_bed_female: "colorsdb_resources/GRCh38/hificnv.female_expected_cn.hg38.bed",
+    tandem_repeat_bed: "colorsdb_resources/GRCh38/human_GRCh38_no_alt_analysis_set.trf.bed",
+    trgt_tandem_repeat_beds: [
       "colorsdb_resources/GRCh38/trgt.adotto_repeats.hg38.bed",
       "colorsdb_resources/GRCh38/trgt.pathogenic_repeats.hg38.bed",
       "colorsdb_resources/GRCh38/trgt.repeat_catalog.hg38.bed"
     ],
-    "somalier_sites_vcf": "colorsdb_resources/GRCh38/somalier.sites.hg38.vcf.gz",
-    "peddy_sites": "colorsdb_resources/GRCh38/peddy.GRCH38.sites",
-    "peddy_bin": "colorsdb_resources/GRCh38/peddy.GRCH38.sites.bin.gz"
+    somalier_sites_vcf: "colorsdb_resources/GRCh38/somalier.sites.hg38.vcf.gz",
+    peddy_sites: "colorsdb_resources/GRCh38/peddy.GRCH38.sites",
+    peddy_bin: "colorsdb_resources/GRCh38/peddy.GRCH38.sites.bin.gz"
     }
 
   ReferenceData chm13 = object {
-    "name": "CHM13",
-    "fasta": "colorsdb_resources/CHM13/human_chm13v2.0_maskedY_rCRS.fasta",
-    "fasta_index": "colorsdb_resources/CHM13/human_chm13v2.0_maskedY_rCRS.fasta.fai",
-    "chromosomes": [
+    name: "CHM13",
+    fasta: "colorsdb_resources/CHM13/human_chm13v2.0_maskedY_rCRS.fasta",
+    fasta_index: "colorsdb_resources/CHM13/human_chm13v2.0_maskedY_rCRS.fasta.fai",
+    chromosomes: [
       "chr1",
       "chr2",
       "chr3",
@@ -122,7 +122,7 @@ task unzip_reference_bundle {
       "chrY",
       "chrM"
     ],
-    "autosomes": [
+    autosomes: [
       "chr1",
       "chr2",
       "chr3",
@@ -146,9 +146,9 @@ task unzip_reference_bundle {
       "chr21",
       "chr22"
     ],
-    "non_diploid_regions": "colorsdb_resources/CHM13/vcfparser.CHM13.ploidy.txt",
-    "tandem_repeat_bed": "colorsdb_resources/CHM13/human_chm13v2.0_maskedY_rCRS.trf.bed",
-    "somalier_sites_vcf": "colorsdb_resources/CHM13/somalier.sites.chm13v2.T2T.vcf.gz"
+    non_diploid_regions: "colorsdb_resources/CHM13/vcfparser.CHM13.ploidy.txt",
+    tandem_repeat_bed: "colorsdb_resources/CHM13/human_chm13v2.0_maskedY_rCRS.trf.bed",
+    somalier_sites_vcf: "colorsdb_resources/CHM13/somalier.sites.chm13v2.T2T.vcf.gz"
     }
   }
 
@@ -178,17 +178,24 @@ task read_sample_sheet {
   command <<<
     set -euo pipefail
 
-    grep -v "^#" ~{sample_sheet} | grep -v -e '^$' > temp_sample_sheet.tsv
-    cut -f1 temp_sample_sheet.tsv > sample_ids.txt
-    cut -f2 temp_sample_sheet.tsv | sed 's/,/\t/g' > movies.tsv
-    cut -f3 temp_sample_sheet.tsv > qc_pass.txt
-    cut -f4 temp_sample_sheet.tsv > sexes.txt
+    # remove empty lines and white space
+    grep -v "^#" ~{sample_sheet} | grep -v -e '^$' | sed -e 's/ //g' > temp_sample_sheet.tsv
 
-    # are the number of rows the same for each column
-    if [ "$(grep -v -e '^$' sample_ids.txt | wc -l)" -ne "$(grep -v -e '^$' movies.tsv | wc -l)" ]; then
+    # check for empty fields in sample_id and movies
+    if [ "$(cut -f1,2 temp_sample_sheet.tsv | awk -F"\t" '{for (i=1;i<=NF;i++) if($i == "") print i}' | wc -l)" -ne "0" ]; then
       echo "The number of sample id column and movies column in the sample sheet do not have the same number of rows." 1>&2
       exit 1
     fi
+    if [ "$(cut -f1,2 temp_sample_sheet.tsv | awk -F'\t' '{print NF}' | sort -nu | wc -l)" -ne "1" ]; then
+      echo "The number of sample id column and movies column in the sample sheet do not have the same number of rows." 1>&2
+      exit 1
+    fi
+
+    cut -f1 temp_sample_sheet.tsv > sample_ids.txt
+    cut -f2 temp_sample_sheet.tsv | sed 's/,/\t/g' > movies.tsv
+    # replace empty lines in qc_pass.txt and sexes.txt with null
+    cut -f3 temp_sample_sheet.tsv | awk '!NF{$0="null"}1' > qc_pass.txt
+    cut -f4 temp_sample_sheet.tsv | awk '!NF{$0="null"}1' > sexes.txt
 
     # are all sample ids unique
     if [ "$(sort sample_ids.txt | uniq -d)" ]; then
@@ -201,6 +208,21 @@ task read_sample_sheet {
       echo "The movie paths in the sample sheet are not unique." 1>&2
       exit 1
     fi
+
+    # are qc_pass values only true or false
+    while read line ; do
+      if [ "$line" != "true" ] && [ "$line" != "false" ] && [ "$line" != "null" ]; then
+        echo "Sample sheet includes invalid values for qc_override (column 3). Must be true or false" 1>&2
+        exit 1
+      fi
+    done < qc_pass.txt
+
+    while read line ; do
+      if [ "$line" != "male" ] && [ "$line" != "female" ] && [ "$line" != "null" ]; then
+        echo "Sample sheet includes invalid values for qc_override (column 4). Must be male or female" 1>&2
+        exit 1
+      fi
+    done < sexes.txt
   >>>
 
   output {
