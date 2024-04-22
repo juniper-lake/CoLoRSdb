@@ -82,6 +82,8 @@ workflow colors_main {
         if (select_first([override_qc_pass[idx], align_qc.qc_pass[idx]])) {
           String qc_pass_sample_id = read_sample_sheet.sample_ids[idx]
           String qc_pass_sex = select_first([override_sex[idx], align_qc.sexes[idx]])
+          File qc_pass_bam = align_qc.aligned_bams[idx]
+          File qc_pass_bam_index = align_qc.aligned_bam_indexes[idx]
         }
       }
 
@@ -94,8 +96,8 @@ workflow colors_main {
             input:
               sample_id = select_all(qc_pass_sample_id)[idx],
               sex = select_all(qc_pass_sex)[idx],
-              aligned_bam = align_qc.aligned_bams[idx],
-              aligned_bam_index = align_qc.aligned_bam_indexes[idx],
+              aligned_bam = select_all(qc_pass_bam)[idx],
+              aligned_bam_index = select_all(qc_pass_bam_index)[idx],
               reference = reference,
               default_runtime_attributes = default_runtime_attributes
           }
