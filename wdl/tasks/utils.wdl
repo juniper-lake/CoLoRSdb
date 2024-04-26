@@ -11,7 +11,7 @@ task unzip_reference_bundle {
     RuntimeAttributes runtime_attributes
   }
 
-  Int disk_size = ceil(size(reference_bundle) * 5) + 10
+  Int disk_size = 30
 
   command <<<
     set -euo pipefail
