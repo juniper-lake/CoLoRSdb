@@ -77,18 +77,18 @@ workflow colors_main {
       Array[File] output_aligned_bam_indexes = align_qc.aligned_bam_indexes
     }
 
-    if (!align_qc_only) {
-      scatter (idx in range(length(read_sample_sheet.sample_ids))) {
-        if (select_first([override_qc_pass[idx], align_qc.qc_pass[idx]])) {
-          String qc_pass_sample_id = read_sample_sheet.sample_ids[idx]
-          String qc_pass_sex = select_first([override_sex[idx], align_qc.sexes[idx]])
-          File qc_pass_bam = align_qc.aligned_bams[idx]
-          File qc_pass_bam_index = align_qc.aligned_bam_indexes[idx]
-        }
+    scatter (idx in range(length(read_sample_sheet.sample_ids))) {
+      if (select_first([override_qc_pass[idx], align_qc.qc_pass[idx]])) {
+        String qc_pass_sample_id = read_sample_sheet.sample_ids[idx]
+        String qc_pass_sex = select_first([override_sex[idx], align_qc.sexes[idx]])
+        File qc_pass_bam = align_qc.aligned_bams[idx]
+        File qc_pass_bam_index = align_qc.aligned_bam_indexes[idx]
       }
+    }
 
-      Int n_samples = length(select_all(qc_pass_sample_id))
+    Int n_samples = length(select_all(qc_pass_sample_id))
 
+    if (!align_qc_only) {
       # continue only if more than one sample had variants called
       if (n_samples > 1) {
         scatter (idx in range(n_samples)) {
@@ -117,8 +117,6 @@ workflow colors_main {
             deepvariant_gvcf_indexes = select_all(call_variants_by_sample.deepvariant_gvcf_index),
             sniffles_snfs = select_all(call_variants_by_sample.sniffles_snf),
             trgt_vcfs = select_all(call_variants_by_sample.trgt_vcf),
-            hificnv_vcfs = select_all(call_variants_by_sample.hificnv_vcf),
-            hificnv_vcf_indexes = select_all(call_variants_by_sample.hificnv_vcf_index),
             reference = reference,
             default_runtime_attributes = default_runtime_attributes
         }
@@ -147,22 +145,16 @@ workflow colors_main {
     Array[File?]+ sniffles_postprocessed_vcf_index = merge_samples.sniffles_postprocessed_vcf_index
     Array[Array[File]?]+ trgt_postprocessed_vcfs = merge_samples.trgt_postprocessed_vcfs
     Array[Array[File]?]+ trgt_postprocessed_vcf_indexes = merge_samples.trgt_postprocessed_vcf_indexes
-    Array[File?]+ hificnv_postprocessed_vcf = merge_samples.hificnv_postprocessed_vcf
-    Array[File?]+ hificnv_postprocessed_vcf_index = merge_samples.hificnv_postprocessed_vcf_index
 
     # original VCFs, so if anonymize_output=false we can access VCFs without ploidy changes
     Array[File?]+ deepvariant_glnexus_vcf = merge_samples.deepvariant_glnexus_vcf
     Array[File?]+ deepvariant_glnexus_vcf_index = merge_samples.deepvariant_glnexus_vcf_index
     Array[File?]+ sniffles_vcf = merge_samples.sniffles_vcf
     Array[File?]+ sniffles_vcf_index = merge_samples.sniffles_vcf_index
-    Array[File?]+ pbsv_strictmerge_vcf = merge_samples.pbsv_strictmerge_vcf
-    Array[File?]+ pbsv_strictmerge_vcf_index = merge_samples.pbsv_strictmerge_vcf_index
     Array[File?]+ pbsv_jasminesv_vcf = merge_samples.pbsv_jasminesv_vcf
     Array[File?]+ pbsv_jasminesv_vcf_index = merge_samples.pbsv_jasminesv_vcf_index
     Array[Array[File]?]+ trgt_vcf = merge_samples.trgt_vcf
     Array[Array[File]?]+ trgt_vcf_index = merge_samples.trgt_vcf_index
-    Array[File?]+ hificnv_vcf = merge_samples.hificnv_vcf
-    Array[File?]+ hificnv_vcf_index = merge_samples.hificnv_vcf_index
 
     # vcf stats
     Array[File?]+ pbsv_jasminesv_vcf_stats = merge_samples.pbsv_jasminesv_vcf_stats

@@ -1,12 +1,10 @@
 # CoLoRS
 
-These workflows are written in [Workflow Description Language (WDL)](https://openwdl.org/).
+These workflows are written in [Workflow Description Language (WDL)](https://openwdl.org/) to support creation of the Consortium of Long Read Sequencing database ([CoLoRSdb](https://colorsdb.org)). Variant databases produced from this workflow are found at DOI [10.5281/zenodo.11511512](https://zenodo.org/doi/10.5281/zenodo.11511512).
 
 ## Workflow
 
 The cohort-level CoLoRS workflow performs alignment, quality control, variant calling, joint-calling small variants and structural variants for a cohort. The workflow can run using Azure, AWS, GCP, and HPC backends but has not been tested on all these platforms.
-
-![Human WGS workflow diagram](docs/images/main.graphviz.png "CoLoRSDdb workflow diagram")
 
 ## Documentation
 

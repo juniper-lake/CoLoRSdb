@@ -8,7 +8,6 @@ task glnexus {
   input {
     String cohort_id
     Array[File] gvcfs
-    Array[File] gvcf_indexes
 
     String reference_name
 

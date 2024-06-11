@@ -6,7 +6,6 @@ import "../tasks/sniffles.wdl" as Sniffles
 import "../tasks/pbsv.wdl" as Pbsv
 import "deepvariant.wdl" as DeepVariant
 import "../tasks/trgt.wdl" as Trgt
-import "../tasks/hificnv.wdl" as Hificnv
 import "../tasks/bcftools.wdl" as Bcftools
 
 workflow call_variants_by_sample {
@@ -93,28 +92,6 @@ workflow call_variants_by_sample {
     }
   }
 
-  if (defined(reference.hificnv_exclude_bed)
-    && defined(reference.hificnv_expected_bed_male)
-    && defined(reference.hificnv_expected_bed_female)) {
-      call Hificnv.hificnv {
-        input:
-          sample_id = sample_id,
-          sex = sex,
-          bam = aligned_bam,
-          bam_index = aligned_bam_index,
-          small_variant_vcf = deepvariant.vcf,
-          small_variant_vcf_index = deepvariant.vcf_index,
-          reference_name = reference.name,
-          reference = reference.fasta,
-          reference_index = reference.fasta_index,
-          exclude_bed = select_first([reference.hificnv_exclude_bed]),
-          exclude_bed_index = select_first([reference.hificnv_exclude_bed_index]),
-          expected_bed_male = select_first([reference.hificnv_expected_bed_male]),
-          expected_bed_female = select_first([reference.hificnv_expected_bed_female]),
-          runtime_attributes = default_runtime_attributes
-      }
-    }
-
   output {
     File sniffles_snf = sniffles_discover.snf
     File unzipped_pbsv_vcf = concat_pbsv_vcfs.concatenated_vcf
@@ -123,7 +100,5 @@ workflow call_variants_by_sample {
     File deepvariant_gvcf = deepvariant.gvcf
     File deepvariant_gvcf_index = deepvariant.gvcf_index
     Array[File]? trgt_vcf = trgt.repeat_vcf
-    File? hificnv_vcf = hificnv.cnv_vcf
-    File? hificnv_vcf_index = hificnv.cnv_vcf_index
   }
 }

@@ -4,7 +4,6 @@ version 1.0
 
 import "../tasks/glnexus.wdl" as Glnexus
 import "../tasks/sniffles.wdl" as Sniffles
-import "../tasks/hificnv.wdl" as Hificnv
 import "../tasks/peddy.wdl" as Peddy
 import "../tasks/vcfparser.wdl" as Vcfparser
 import "../tasks/bcftools.wdl" as Bcftools
@@ -24,8 +23,6 @@ workflow merge_samples {
     Array[File] deepvariant_gvcf_indexes
     Array[File] sniffles_snfs
     Array[Array[File?]] trgt_vcfs
-    Array[File?] hificnv_vcfs
-    Array[File?] hificnv_vcf_indexes
 
     ReferenceData reference
 
@@ -34,15 +31,6 @@ workflow merge_samples {
 
   scatter (idx in range(length(sample_ids))) {
     String sample_plus_sex = "~{sample_ids[idx]}+~{sexes[idx]}"
-  }
-
-  # strict merge pbsv vcfs with bcftools
-  call Bcftools.merge_vcfs as strict_merge_pbsv_vcfs {
-    input:
-      vcfs = pbsv_vcfs,
-      vcf_indexes = pbsv_vcf_indexes,
-      output_prefix = "~{cohort_id}.~{reference.name}.pbsv.strictmerge",
-      runtime_attributes = default_runtime_attributes
   }
 
   # jasminesv merge pbsv vcfs
@@ -126,7 +114,6 @@ workflow merge_samples {
     input:
       cohort_id = cohort_id,
       gvcfs = deepvariant_gvcfs,
-      gvcf_indexes = deepvariant_gvcf_indexes,
       reference_name = reference.name,
       runtime_attributes = default_runtime_attributes
   }
@@ -198,29 +185,6 @@ workflow merge_samples {
     Array[File] trgt_postprocessed_vcf_indexes_temp = select_all(postprocess_trgt_vcf.postprocessed_vcf_index)
   }
 
-  if (length(select_all(hificnv_vcfs)) > 0) {
-    # merge hificnv vcfs
-    call Hificnv.merge_hificnv_vcfs {
-      input:
-        cnv_vcfs = select_all(hificnv_vcfs),
-        cnv_vcf_indexes = select_all(hificnv_vcf_indexes),
-        cohort_id = cohort_id,
-        reference_name = reference.name,
-        runtime_attributes = default_runtime_attributes
-    }
-
-    # postprocess hificnv
-    call Vcfparser.postprocess_joint_vcf as postprocess_hificnv_vcf {
-      input:
-        vcf = merge_hificnv_vcfs.merged_cnv_vcf,
-        cohort_id = cohort_id,
-        sample_plus_sexes = sample_plus_sex,
-        non_diploid_regions = reference.non_diploid_regions,
-        anonymize_output = anonymize_output,
-        runtime_attributes = default_runtime_attributes
-    }
-  }
-
   output {
     # postprocessed VCFs
     File deepvariant_glnexus_postprocessed_vcf = postprocess_deepvariant_vcf.postprocessed_vcf
@@ -231,22 +195,16 @@ workflow merge_samples {
     File sniffles_postprocessed_vcf_index = postprocess_sniffles_vcf.postprocessed_vcf_index
     Array[File]? trgt_postprocessed_vcfs = trgt_postprocessed_vcfs_temp
     Array[File]? trgt_postprocessed_vcf_indexes = trgt_postprocessed_vcf_indexes_temp
-    File? hificnv_postprocessed_vcf = postprocess_hificnv_vcf.postprocessed_vcf
-    File? hificnv_postprocessed_vcf_index = postprocess_hificnv_vcf.postprocessed_vcf_index
 
     # original VCFs, so if anonymize_output=false we can access VCFs without ploidy changes
     File deepvariant_glnexus_vcf = filter_norm_deepvariant.normalized_vcf
     File deepvariant_glnexus_vcf_index = filter_norm_deepvariant.normalized_vcf_index
     File sniffles_vcf = filter_zip_index_sniffles.zipped_vcf
     File sniffles_vcf_index = filter_zip_index_sniffles.zipped_vcf_index
-    File pbsv_strictmerge_vcf = strict_merge_pbsv_vcfs.merged_vcf
-    File pbsv_strictmerge_vcf_index = strict_merge_pbsv_vcfs.merged_vcf_index
     File pbsv_jasminesv_vcf = reheader_zip_index_jasminesv.zipped_vcf
     File pbsv_jasminesv_vcf_index = reheader_zip_index_jasminesv.zipped_vcf_index
     Array[File]? trgt_vcf = merge_trgt_vcfs.merged_vcf
     Array[File]? trgt_vcf_index = merge_trgt_vcfs.merged_vcf_index
-    File? hificnv_vcf = merge_hificnv_vcfs.merged_cnv_vcf
-    File? hificnv_vcf_index = merge_hificnv_vcfs.merged_cnv_vcf_index
 
     # vcf stats
     File pbsv_jasminesv_vcf_stats = pbsv_jasminesv_stats.stats

@@ -173,7 +173,7 @@ task read_sample_sheet {
     RuntimeAttributes runtime_attributes
   }
 
-  Int disk_size = ceil(size(sample_sheet)) + 5
+  Int disk_size = ceil(size(sample_sheet, "GB")) + 5
 
   command <<<
     set -euo pipefail
