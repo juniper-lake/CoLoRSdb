@@ -24,12 +24,13 @@ task jasminesv_merge_svs {
 
     jasmine --help
 
+    echo -e "~{sep='\n' vcfs}" > vcf_fofn.txt
+
     jasmine \
       --output_genotypes \
       --allow_intrasample \
-      --comma_filelist \
       threads=~{threads} \
-      file_list=~{sep="," vcfs} \
+      file_list=vcf_fofn.txt \
       out_file=~{output_prefix}.vcf
   >>>
 
