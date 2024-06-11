@@ -1,6 +1,6 @@
 # Running the workflow
 
-**Please [contact Juniper Lake by email](mailto:jlake@pacificbiosciences.com) before attempting to run this workflow. This is NOT a development-level workflow and requires special instructions.**
+**Please [contact Juniper Lake by email](mailto:jlake@pacificbiosciences.com) before attempting to run this workflow or if you hit any errors while running the workflow. If you are contributing data to CoLoRSdb, then customizations to the workflow must be approved to ensure the analysis is the same for each contributor.**
 
 ## HPC Quickstart (SLURM+MiniWDL or Cromwell)
 
@@ -19,7 +19,7 @@ If running with SLURM+MiniWDL, the following requirements must be met.
 # clone github repo
 git clone https://github.com/juniper-lake/CoLoRSdb.git
 
-# download and unzip required reference files
+# download required reference files (do not unzip)
 wget https://zenodo.org/records/10277930/files/colorsdb.v1.0.1.resources.tgz
 
 # if using miniwdl, make virtual environment and install dependencies
@@ -37,7 +37,7 @@ Create your own [sample sheet TSV](templates/sample_sheet.tsv) and [inputs JSON]
 | cohort_id | String | Name of the cohort, e.g. "HPRC" |
 | sample_sheet | File | TSV where first column is sample IDs, which should have no spaces or special characters except underscores. The second column is a comma-separated list of HiFi movies (FASTQ or BAM) associated with the sample. BAMs can be aligned or unaligned |
 | reference_bundle | File | Zipped tarball of reference files downloaded according to above instructions, i.e. "colorsdb.v1.0.1.resources.tgz" |
-| anonymize_output | Boolean | Set to `false` if you can share sample-level data (i.e. multi-sample VCFs) with PacBio-affiliated members of the analysis team. This is the preferred option and allows us to more accurately merge variants between cohorts downstream. After cohort merging, data is aggregated to summary statistics and variants that can be uniquely associated with any single sample are removed. Set to `true` if you CANNOT share sample-level data with PacBio. Only randomized data is output by the workflow. See how data is randomized [here](images/anonymize_output_example.png) |
+| anonymize_output | Boolean | Default is `false`. Set to `true` if you CANNOT share sample-level data with PacBio. If `true` then we cannot use your variant data for sex chromosomes because only randomized data will be output by the workflow. See how data is randomized [here](images/anonymize_output_example.png) |
 | backend | String | Can be "HPC", "AnViL", "AWS", "Azure", or "GCP" depending on your backend |
 | preemptible | Boolean | Set to `true` to run tasks preemptibly where possible. Set to `false` to use on-demand VMs for every task. Ignored if backend is set to HPC |
 
@@ -84,11 +84,3 @@ cromwell run \
   CoLoRSdb/wdl/workflows/colors_main.wdl \
   --inputs <path/to/your/inputs.json>
 ```
-
-## AnViL/Terra Quickstart
-
-Coming soon!
-
-  <!-- "colors_main.backend": "AnVIL",
-  "colors_main.preemptible": true,
-  "colors_main.zones": "us-central1-a us-central1-c us-central1-b us-central1-f" -->
