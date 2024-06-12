@@ -267,10 +267,10 @@ task summarize_qc {
     Array[Int] read_count
     Array[Int] unique_read_count
     Array[Float] read_quality_mean
-    Array[Int] read_quality_median
+    Array[Float] read_quality_median
     Array[Float] read_quality_stdev
     Array[Float] read_length_mean
-    Array[Int] read_length_median
+    Array[Float] read_length_median
     Array[Float] read_length_stdev
 
     Array[Array[String]] peek_a_bam_tsv
