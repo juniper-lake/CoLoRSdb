@@ -93,10 +93,10 @@ task combine_smrtcell_stats {
   output {
     Int read_count = read_int("read_count.txt")
     Int unique_read_count = read_int("read_count_unique.txt")
-    Float read_length_median = read_int("read_length_median.txt")
+    Float read_length_median = read_float("read_length_median.txt")
     Float read_length_mean = read_float("read_length_mean.txt")
     Float read_length_stdev = read_float("read_length_stdev.txt")
-    Float read_quality_median = read_int("read_quality_median.txt")
+    Float read_quality_median = read_float("read_quality_median.txt")
     Float read_quality_mean = read_float("read_quality_mean.txt")
     Float read_quality_stdev = read_float("read_quality_stdev.txt")
   }
